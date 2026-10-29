@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Metronome</title></head><body>
+<script src="core.js"></script>
+<script>
+/* Mechanical metronome: the Time course (a block that runs every 500ms).
+   How it really works: a wound spring drives an escapement that swings the pendulum rod left and right; the sliding
+   weight on the rod sets the tempo (higher = slower). Each swing clicks once: a steady beat at a fixed interval.
+   Parts: CASE    wooden pyramid body . plinth . front opening with a tempo scale . top finial
+          WORKS   pendulum rod . sliding weight . pivot at the bottom of the opening
+          WIND    winding key on the side
+   Scale: 1 unit = 1 cm, modelled 2x so the scale reads. */
+const MW = 30, MD = 40;            // footprint (x depth, y width)
+const MH = 70;                     // body height
+const TOPW = 12;                   // width at the top (y)
+const MB = PALS.tomato;
+const WOODM = { l: '#d9a86c', m: '#bf8a4f', d: '#8e6236' };
+const ROD_A = -16;                 // the rod, swung to one side, in degrees
+
+const ring = (z, hw, hd) => [[MW / 2 + hd, MD / 2 - hw, z], [MW / 2 + hd, MD / 2 + hw, z], [MW / 2 - hd, MD / 2 + hw, z], [MW / 2 - hd, MD / 2 - hw, z]];
+
+function scene(st, m){
+  let s = castShadow([...ring(0, MD / 2 + 3, MW / 2 + 3), [MW / 2, MD / 2, MH + 8]]);
+  // plinth, then the pyramid body lofted between its base and top rings
+  s += box(-3, -3, 0, MW + 3, MD + 3, 6, WOODM, toneI, 2);
+  const A = ring(6, MD / 2, MW / 2), B = ring(MH, TOPW / 2, 6);
+  s += loft(A, B, n => tone(n, MB));
+  // the front opening: a tall slot with the tempo scale and the swinging rod
+  const fx = (z) => MW / 2 + (MW / 2) + (6 - MW / 2) * (z - 6) / (MH - 6);   // the sloped front's x at height z
+  const slot = (z, hw) => [fx(z) + .3, MD / 2 + hw, z];
+  if (facing([1, 0, .4])) {
+    const o = [slot(14, 8), slot(14, -8), slot(MH - 8, -3), slot(MH - 8, 3)];
+    s += shape(o, '#2b2523', 1.4);
+    // tempo scale: ticks up the opening's centre line
+    let t = ''; for (let z = 22; z <= MH - 12; z += 4) { const hw = 1.2; t += pd([slot(z, -hw), slot(z, hw)], false); }
+    s += `<path d="${t}" fill="none" stroke="#f3e6c8" stroke-width="1" opacity=".8"/>`;
+    // pendulum rod from the pivot, swung over, with its sliding weight
+    const piv = [fx(16) + 1.5, MD / 2, 16], a = ROD_A * Math.PI / 180, L = 52;
+    const tip = [piv[0] + Math.sin(-a) * 0 + (fx(16 + L) - fx(16)), MD / 2 + Math.sin(a) * L, 16 + Math.cos(a) * L];
+    const w = [piv[0] + (tip[0] - piv[0]) * .62, piv[1] + (tip[1] - piv[1]) * .62, piv[2] + (tip[2] - piv[2]) * .62];
+    s += rod(piv, tip, .8, METAL, toneI, 1);
+    s += rod([w[0] - .3, w[1] + Math.sin(a) * 2.5, w[2] + Math.cos(a) * 2.5], [w[0] + .3, w[1] - Math.sin(a) * 2.5, w[2] - Math.cos(a) * 2.5], 3.2, PALS.mustard, toneI, 1.2);
+    s += cylX(piv[0] - .5, piv[0] + 1.2, piv[1], piv[2], 2, METAL, toneI, .9, 14);
+  }
+  s += hullInk([...A, ...B], 2.8);
+  // finial on top and the winding key on the shaded side
+  s += box(MW / 2 - 6.5, MD / 2 - TOPW / 2 - .5, MH, MW / 2 + 6.5, MD / 2 + TOPW / 2 + .5, MH + 3, WOODM, toneI, 1.4);
+  if (facing([0, 1, 0])) {
+    const kx = MW / 2, ky = MD / 2 + (MD / 2 + (TOPW / 2 - MD / 2) * (24 - 6) / (MH - 6)), kz = 24;
+    s += rod([kx, ky, kz], [kx, ky + 4, kz], 1.2, METAL, toneI, .9) + box(kx - 5, ky + 4, kz - 1.5, kx + 5, ky + 5.5, kz + 1.5, METAL, toneI, 1);
+  }
+  return s;
+}
+
+const ui = mountFigure({ fig: '03', title: 'Metronome', size: [MW + 6, MD + 12, MH + 4], center: [MW / 2, MD / 2 + 4], palette: 'tomato', state: {}, scene });
+</script>
+<script src="still.js"></script>
+</body></html>

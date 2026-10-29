@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gears</title></head><body>
+<script src="core.js"></script>
+<script>
+/* Three meshed gears on a plate: the Tasks course (work running side by side, each at its own pace).
+   How it really works: the big gear drives the middle one, which drives the small one; with fewer teeth each turns
+   faster. Teeth mesh at the pitch circles: centre distance = r1 + r2.
+   Parts: PLATE  steel base plate . three stub axles . GEARS big (24 teeth) . middle (16) . small (10), each with a hub
+   Scale: 1 unit = 1 mm, modelled at 1:1. */
+const GP = { l: '#d6dbdd', m: '#b9c0c4', d: '#7f888d' };
+// pitch radius, teeth, colour; centres placed so neighbours touch at their pitch circles
+const GEARS = [
+  { r: 30, n: 24, pal: PALS.mustard, h: 7 },
+  { r: 20, n: 16, pal: PALS.tomato, h: 7 },
+  { r: 12.5, n: 10, pal: PALS.cobalt, h: 7 },
+];
+const AX = [[48, 134], null, null];
+(() => {
+  const a1 = -40 * Math.PI / 180, a2 = 25 * Math.PI / 180;
+  const d1 = GEARS[0].r + GEARS[1].r, d2 = GEARS[1].r + GEARS[2].r;
+  AX[1] = [AX[0][0] + d1 * Math.cos(a1), AX[0][1] + d1 * Math.sin(a1)];
+  AX[2] = [AX[1][0] + d2 * Math.cos(a2), AX[1][1] + d2 * Math.sin(a2)];
+})();
+const PLATE_Z = 4;
+
+// a toothed ring: trapezoid teeth around the pitch circle
+function teeth(cx, cy, g, rot){
+  const pts = [], ro = g.r + 2.6, ri = g.r - 2.8;
+  for (let i = 0; i < g.n; i++) {
+    const a = rot + i / g.n * 2 * Math.PI, w = Math.PI / g.n;
+    for (const [da, rr] of [[-w * .55, ri], [-w * .3, ro], [w * .3, ro], [w * .55, ri]])
+      pts.push([cx + rr * Math.cos(a + da), cy + rr * Math.sin(a + da)]);
+  }
+  return pts;
+}
+function gear(i, rot){
+  const g = GEARS[i], [cx, cy] = AX[i], z0 = PLATE_Z + 1, z1 = z0 + g.h;
+  const A = on(PZ(z0), teeth(cx, cy, g, rot)), B = on(PZ(z1), teeth(cx, cy, g, rot));
+  let s = loft(A, B, n => toneI(n, g.pal));
+  s += fill(pd(B), g.pal.l) + ink(pd(B), 1.1);
+  // a recessed web with spokes, then the hub and its axle
+  s += shape(on(PZ(z1 + .05), ellUV(cx, cy, g.r - 6, g.r - 6, 32)), g.pal.m, .9);
+  const holes = g.n >= 16 ? 5 : 0;
+  for (let k = 0; k < holes; k++) { const a = rot + k / holes * 2 * Math.PI, rr = (g.r - 6 + 6) / 2 + 1;
+    s += shape(on(PZ(z1 + .08), ellUV(cx + rr * Math.cos(a), cy + rr * Math.sin(a), (g.r - 12) / 3.2, (g.r - 12) / 3.2, 14)), g.pal.d, .8); }
+  s += cyl(cx, cy, z1, z1 + 2.5, Math.max(4, g.r * .28), g.pal, toneI, 1.2, 24);
+  s += cyl(cx, cy, z1 + 2.5, z1 + 4, 2.2, METAL, toneI, .9, 16);
+  s += hullInk([...A, ...B], 2.4);
+  return { box: [[cx - g.r - 3, cy - g.r - 3, z0], [cx + g.r + 3, cy + g.r + 3, z1 + 4]], svg: s };
+}
+
+function scene(st, m){
+  let s = board(10, 66, 140, 180, PLATE_Z, 8, GP);
+  const top = boardTop(10, 66, 140, 180, PLATE_Z, 8);
+  s += castShadow(GEARS.flatMap((g, i) => [...on(PZ(PLATE_Z), ellUV(AX[i][0], AX[i][1], g.r + 2, g.r + 2, 12)), [AX[i][0], AX[i][1], PLATE_Z + g.h + 4]]), PLATE_Z, top);
+  // screws in the plate's corners
+  for (const [x, y] of [[18, 74], [132, 74], [18, 172], [132, 172]]) s += cyl(x, y, PLATE_Z, PLATE_Z + .8, 2.6, METAL, toneI, .8, 14) + line([[x - 1.6, y, PLATE_Z + .85], [x + 1.6, y, PLATE_Z + .85]], .7);
+  // rotations chosen so the teeth interlock at each contact
+  const rots = [0, Math.PI / 16 + .12, .3];
+  return s + byDepth(GEARS.map((g, i) => gear(i, rots[i])));
+}
+
+const ui = mountFigure({ fig: '04', title: 'Gears', size: [130, 114, 18], center: [75, 123], palette: 'mustard', state: {}, scene });
+</script>
+<script src="still.js"></script>
+</body></html>

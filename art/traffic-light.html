@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Traffic light</title></head><body>
+<script src="core.js"></script>
+<script>
+/* Traffic light and crossing button: the State machines course.
+   How it really works: a controller holds the junction in one state at a time (green, amber, red). A timer moves it on;
+   pressing the crossing button asks for red sooner. The head shows only the lamp of the current state.
+   Parts: POST   steel pole . round base plate with four bolts . top cap
+          HEAD   housing (3 cells) . black backboard with a white border . three lamps (red, amber, green) behind lenses .
+                 a hood over each lamp . two brackets clamping the head to the pole
+          BUTTON short post . push-button box with a round button and a WAIT lamp
+   Scale: 1 unit = 1 cm (pole 9 cm across, head 28 x 24 x 82). */
+const TL_PX = 30, TL_PY = 62, TL_POLE_R = 4.5, TL_POLE_H = 210;     // pole centre and size
+const TL_HX0 = 36, TL_HX1 = 60, TL_HY0 = 48, TL_HY1 = 76, TL_HZ0 = 118, TL_HZ1 = 200;   // head housing
+const TL_LAMPS = [{ z: 186, col: '#e2483d', name: 'red' }, { z: 159, col: '#f4b829', name: 'amber' }, { z: 132, col: '#43c25c', name: 'green' }];
+const TL_ON = 'green';
+const TL_POLE = { l: '#b9c0c4', m: '#939ca1', d: '#5f676c' };
+const TL_HOUSE = PALS.mustard;
+const TL_BOARD = { l: '#2a2f2e', m: '#1f2423', d: '#141817' };
+const TL_BTN_X = 62, TL_BTN_Y = 14;                                  // crossing-button post, nearer the viewer
+
+function tlLamp(l){
+  const cy = (TL_HY0 + TL_HY1) / 2, x = TL_HX1, r = 9.5, lit = l.name === TL_ON;
+  let s = '';
+  // the lens in a dark ring; the lit one glows
+  s += shape(on(PX(x + .2), ellUV(cy, l.z, r + 1.6, r + 1.6, 28)), '#151a19', .9);
+  s += shape(on(PX(x + .4), ellUV(cy, l.z, r, r, 28)), lit ? l.col : mix(l.col, '#1c2321', .35), .8);
+  // a lens catches the light even when it's off
+  if (!lit) s += fill(pd(on(PX(x + .5), ellUV(cy + 3, l.z + 3.5, r * .32, r * .2, 16))), '#ffffff', 'opacity=".3"');
+  if (lit) {
+    s += fill(pd(on(PX(x + .5), ellUV(cy + 2.5, l.z + 3, r * .45, r * .32, 20))), '#ffffff', 'opacity=".55"');
+    s += `<g opacity=".6" filter="url(#tlGlow)">${fill(pd(on(PX(x + .6), ellUV(cy, l.z, r * 2.2, r * 2.2, 28))), l.col)}</g>`;
+  }
+  // the hood: half a tube over the top of the lens, open underneath
+  const ring = (xx, rr) => on(PX(xx), arcUV(cy, l.z, rr, 0, 180, 14));
+  const A = ring(x, r + 1.8), B = ring(x + 9, r + 1.8);
+  s += loft(A, B, n => toneI(n, TL_BOARD)) + hullInk([...A, ...B], 1.2);
+  return s;
+}
+
+function scene(st, m){
+  const FRONT = facing([1, 0, 0]);
+  let s = `<defs><filter id="tlGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${(5 * INK_K).toFixed(2)}"/></filter></defs>`;
+  // one shadow for the light and its button post
+  s += castShadow([...on(PZ(0), ellUV(TL_PX, TL_PY, 16, 16, 12)), [TL_PX, TL_PY, TL_POLE_H], [TL_HX1, TL_HY0, TL_HZ1], [TL_HX1, TL_HY1, TL_HZ1],
+    [TL_HX0, TL_HY0, TL_HZ0], [TL_HX1, TL_HY1, TL_HZ0]]);
+  s += castShadow([...on(PZ(0), ellUV(TL_BTN_X, TL_BTN_Y, 7, 7, 10)), [TL_BTN_X, TL_BTN_Y, 108]]);
+
+  const parts = [];
+  // base plate with bolts, then the pole and its cap
+  let base = cyl(TL_PX, TL_PY, 0, 2.5, 16, TL_POLE, toneI, 1.6, 32);
+  for (const a of [45, 135, 225, 315]) { const r = a * Math.PI / 180;
+    base += cyl(TL_PX + 11 * Math.cos(r), TL_PY + 11 * Math.sin(r), 2.5, 4, 1.6, METAL, toneI, .7, 10); }
+  parts.push({ box: [[TL_PX - 16, TL_PY - 16, 0], [TL_PX + 16, TL_PY + 16, 4]], svg: base });
+  parts.push({ box: [[TL_PX - TL_POLE_R, TL_PY - TL_POLE_R, 4], [TL_PX + TL_POLE_R, TL_PY + TL_POLE_R, TL_HZ0 - 6]],
+    svg: cyl(TL_PX, TL_PY, 4, TL_HZ0 - 6, TL_POLE_R, TL_POLE, toneI, 1.8, 24) });
+  parts.push({ box: [[TL_PX - TL_POLE_R, TL_PY - TL_POLE_R, TL_HZ0 - 6], [TL_PX + TL_POLE_R, TL_PY + TL_POLE_R, TL_POLE_H + 3]],
+    svg: cyl(TL_PX, TL_PY, TL_HZ0 - 6, TL_POLE_H, TL_POLE_R, TL_POLE, toneI, 1.6, 24) + cyl(TL_PX, TL_PY, TL_POLE_H, TL_POLE_H + 3, TL_POLE_R + 1.2, TL_POLE, toneI, 1, 24) });
+  // brackets from the pole to the back of the head
+  for (const z of [TL_HZ0 + 12, TL_HZ1 - 12])
+    parts.push({ box: [[TL_PX, TL_PY - 2, z - 2], [TL_HX0 - 4, TL_PY + 2, z + 2]], svg: box(TL_PX + 2, TL_PY - 2, z - 2, TL_HX0 - 4, TL_PY + 2, z + 2, TL_POLE, toneI, .9) });
+
+  // the head: backboard behind the housing, then the housing, then lamps on its front
+  let head = box(TL_HX0 - 4, TL_HY0 - 9, TL_HZ0 - 9, TL_HX0, TL_HY1 + 9, TL_HZ1 + 9, TL_BOARD, toneI, 1.2);
+  head += box(TL_HX0, TL_HY0, TL_HZ0, TL_HX1, TL_HY1, TL_HZ1, TL_HOUSE, toneI, 1.4);
+  if (FRONT) {
+    // cell seams between the lamps
+    for (const z of [145.5, 172.5]) head += ink(pd([[TL_HX1 + .1, TL_HY0, z], [TL_HX1 + .1, TL_HY1, z]], false), .8);
+    head += TL_LAMPS.map(tlLamp).join('');
+  }
+  parts.push({ box: [[TL_HX0 - 4, TL_HY0 - 9, TL_HZ0 - 9], [TL_HX1 + 9, TL_HY1 + 9, TL_HZ1 + 9]], svg: head });
+
+  // crossing button: a short post with the push-button box at hand height
+  const BP = { l: '#f4b829', m: '#d49c1f', d: '#8a6a18' };
+  let btn = cyl(TL_BTN_X, TL_BTN_Y, 0, 92, 2.6, TL_POLE, toneI, 1.4, 18);
+  btn += box(TL_BTN_X - 4, TL_BTN_Y - 7, 92, TL_BTN_X + 4, TL_BTN_Y + 7, 112, BP, toneI, 1.4);
+  if (FRONT) {
+    btn += shape(on(PX(TL_BTN_X + 4.1), ellUV(TL_BTN_Y, 99, 3.4, 3.4, 20)), '#2e3735', .9);
+    btn += cylX(TL_BTN_X + 4, TL_BTN_X + 5.6, TL_BTN_Y, 99, 2.4, METAL, toneI, .8, 18);
+    btn += shape(on(PX(TL_BTN_X + 4.1), rrUV(TL_BTN_Y - 4.5, 104.5, TL_BTN_Y + 4.5, 109.5, 1.2)), '#1d2a26', .7);
+    btn += tx(TL_BTN_X + 4.2, TL_BTN_Y, 106, 'WAIT', 3, '#8af0ae', 800);
+  }
+  parts.push({ box: [[TL_BTN_X - 4, TL_BTN_Y - 7, 0], [TL_BTN_X + 6, TL_BTN_Y + 7, 112]], svg: btn });
+
+  return s + byDepth(parts);
+}
+
+const ui = mountFigure({
+  fig: '01', title: 'Traffic light', size: [TL_BTN_X + 8, TL_PY + 18, TL_POLE_H + 6], center: [42, 46], palette: 'mustard',
+  state: {}, scene, credit: true,
+});
+</script>
+<script src="still.js"></script>
+</body></html>

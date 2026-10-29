@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mailbox</title></head><body>
+<script src="core.js"></script>
+<script>
+/* A rural mailbox on a post: the Channels course (one side puts values in, the other takes them out).
+   How it really works: the sender drops letters in through the front door and raises the flag; the collector sees
+   the flag, opens the door and takes the letters in the order they arrived.
+   Parts: POST   wooden post . cross arm under the box
+          BOX    arched steel body (a flat floor, a round top) . front door with a pull tab, open . red flag on its pivot
+          MAIL   three letters, the front one half in through the door
+   Scale: 1 unit = 1 cm. */
+const BX0 = 10, BX1 = 58, BY0 = 30, BY1 = 52, BZ = 100, BH = 26;      // box along x, width y, floor at z = BZ
+const BOXM = PALS.mint;
+const POSTM = { l: '#c99a62', m: '#a87b48', d: '#6e4c29' };
+const ARCH = (() => { const w = BY1 - BY0, r = w / 2, p = [[BY0, BZ], [BY1, BZ], [BY1, BZ + BH - r]];
+  for (let i = 1; i < 12; i++) { const a = i / 12 * Math.PI; p.push([BY0 + r + r * Math.cos(a), BZ + BH - r + r * Math.sin(a)]); }
+  p.push([BY0, BZ + BH - r]); return p; })();
+
+function letter(x0, y, z, tilt){
+  const L = { l: '#fbfaf3', m: '#e3e0d2', d: '#bdb8a6' };
+  return box(x0, y - 8, z, x0 + 14, y + 8, z + 1.2, L, toneI, .9);
+}
+
+function scene(st, m){
+  let s = castShadow([...on(PZ(0), rectUV(28, 37, 36, 45)), [32, 41, BZ], ...on(PX(BX0), ARCH), ...on(PX(BX1), ARCH)]);
+  const parts = [];
+  parts.push({ box: [[28, 37, 0], [36, 45, BZ - 4]], svg: box(28, 37, 0, 36, 45, BZ - 4, POSTM, toneI, 1.8) });
+  parts.push({ box: [[14, 36, BZ - 4], [54, 46, BZ]], svg: box(14, 36, BZ - 4, 54, 46, BZ, POSTM, toneI, 1.4) });
+  // the body: the arch swept along x, its back cap, and the open front with the door folded down
+  let body = extrude(ARCH, BX0, BX1, BOXM);
+  if (facing([-1, 0, 0])) body += shape(on(PX(BX0), ARCH), tone([-1, 0, 0], BOXM), 2);
+  const FRONT = facing([1, 0, 0]);
+  if (FRONT) {
+    body += shape(on(PX(BX1 + .05), ARCH), '#2b2523', 1.8);
+    // letters inside, seen through the opening, and one sliding in
+    body += clipTo(on(PX(BX1 + .1), ARCH), letter(BX1 - 14, (BY0 + BY1) / 2, BZ + 1, 0) + letter(BX1 - 16, (BY0 + BY1) / 2, BZ + 2.4, 0));
+  }
+  body += hullInk([...on(PX(BX0), ARCH), ...on(PX(BX1), ARCH)], 2.8);
+  parts.push({ box: [[BX0, BY0, BZ], [BX1, BY1, BZ + BH]], svg: body });
+  // the door, hanging open from its bottom hinge
+  if (FRONT) {
+    const door = ARCH.map(([y, z]) => [BX1 + (z - BZ), y, BZ - .2]);
+    parts.push({ box: [[BX1, BY0, BZ - 1], [BX1 + BH, BY1, BZ]], svg: shape(door, BOXM.l, 1.8) + box(BX1 + BH - 2, (BY0 + BY1) / 2 - 3, BZ - 1.5, BX1 + BH, (BY0 + BY1) / 2 + 3, BZ, METAL, toneI, .8) });
+    parts.push({ box: [[BX1 - 4, 33, BZ + 4], [BX1 + 12, 49, BZ + 6]], svg: letter(BX1 - 4, (BY0 + BY1) / 2, BZ + 4.5, 0) });
+  }
+  // the red flag, raised, on the side facing the viewer
+  const FLAG_Y = BY0 - .6;
+  parts.push({ box: [[34, FLAG_Y - 1.2, BZ + 6], [44, FLAG_Y, BZ + 34]], svg:
+    box(38, FLAG_Y - 1, BZ + 6, 40, FLAG_Y, BZ + 30, PALS.tomato, toneI, 1) + box(38, FLAG_Y - 1, BZ + 24, 48, FLAG_Y, BZ + 32, PALS.tomato, toneI, 1.2)
+    + cylX(38, 40, FLAG_Y - .5, BZ + 9, 1.6, METAL, toneI, .8, 12).replace('', '') });
+  return s + byDepth(parts);
+}
+
+const ui = mountFigure({ fig: '06', title: 'Mailbox', size: [BX1 + BH, BY1, BZ + 34], center: [44, 41], palette: 'mint', state: {}, scene });
+</script>
+<script src="still.js"></script>
+</body></html>

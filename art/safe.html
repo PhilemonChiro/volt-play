@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Safe</title></head><body>
+<script src="core.js"></script>
+<script>
+/* A small safe: the Storage course (a value that survives a restart).
+   How it really works: the door is a thick steel slab on two hinges; turning the dial to the combination frees the
+   bolts, and the handle draws them back. What's inside stays there with the power off.
+   Parts: BODY   steel cabinet with rounded edges . four feet
+          DOOR   inset door with a bevel . two hinge barrels . combination dial with a numbered ring . three-spoke handle
+          PLATE  maker's plate
+   Scale: 1 unit = 1 cm. */
+const SW = 44, SD = 46, SAFE_H = 52;                 // x depth, y width, z height
+const SAFE = PALS.cobalt;
+const OUT = rrUV(0, 4, SD, SAFE_H + 4, 5);           // body profile in (y, z), on 4 cm feet
+const DY0 = 6, DY1 = SD - 6, DZ0 = 9, DZ1 = SAFE_H - 1;   // door, inset in the front face
+const DIAL = [SD / 2 + 5, 34], HANDLE = [SD / 2 + 5, 20];
+
+function scene(st, m){
+  const FRONT = facing([1, 0, 0]);
+  let s = castShadow([...on(PX(0), OUT), ...on(PX(SW), OUT)]);
+  // feet
+  const feet = [[5, 5], [5, SD - 5], [SW - 5, 5], [SW - 5, SD - 5]].map(([x, y]) => ({ at: [x, y, 2], svg: cyl(x, y, 0, 4, 2.6, DARK, toneI, 1, 14) }));
+  s += byDepth(feet);
+  let body = extrude(OUT, 0, SW, SAFE);
+  if (FRONT) {
+    body += fill(pd(on(PX(SW), OUT)), tone([1, 0, 0], SAFE));
+    // the door: a bevelled panel with its seam, hinges on the left
+    body += shape(on(PX(SW + .1), rrUV(DY0, DZ0, DY1, DZ1, 3)), SAFE.l, 1.8);
+    body += shape(on(PX(SW + .2), rrUV(DY0 + 3, DZ0 + 3, DY1 - 3, DZ1 - 3, 2)), mix(SAFE.l, '#ffffff', .12), .9);
+    for (const z of [DZ0 + 8, DZ1 - 8]) body += cylX(SW, SW + 1, DY1 + 1.6, z, 1.8, METAL, toneI, .9, 14).replace(/cylX/, '') + box(SW, DY1 - .5, z - 4, SW + 1.6, DY1 + 2.6, z + 4, METAL, toneI, .9);
+    // combination dial: a numbered ring, the knob, an index mark above
+    body += shape(on(PX(SW + .3), ellUV(DIAL[0], DIAL[1], 7.5, 7.5, 32)), '#e9edf0', 1.2);
+    let ticks = '';
+    for (let k = 0; k < 20; k++) { const a = k / 20 * 2 * Math.PI, r0 = k % 5 ? 6.2 : 5.2;
+      ticks += pd([[SW + .35, DIAL[0] + r0 * Math.cos(a), DIAL[1] + r0 * Math.sin(a)], [SW + .35, DIAL[0] + 7.1 * Math.cos(a), DIAL[1] + 7.1 * Math.sin(a)]], false); }
+    body += `<path d="${ticks}" fill="none" stroke="${INK}" stroke-width=".7"/>`;
+    body += cylX(SW + .3, SW + 3.2, DIAL[0], DIAL[1], 4.2, METAL, toneI, 1.1, 24);
+    body += fill(pd(on(PX(SW + .4), [[DIAL[0] - .9, DIAL[1] + 8.8], [DIAL[0] + .9, DIAL[1] + 8.8], [DIAL[0], DIAL[1] + 7.6]])), '#e2483d');
+    // three-spoke handle
+    body += cylX(SW + .3, SW + 2.8, HANDLE[0], HANDLE[1], 2.4, METAL, toneI, 1, 16);
+    for (const a of [90, 210, 330]) { const r = a * Math.PI / 180;
+      body += rod([SW + 2.2, HANDLE[0], HANDLE[1]], [SW + 2.2, HANDLE[0] + 7 * Math.cos(r), HANDLE[1] + 7 * Math.sin(r)], .9, METAL, toneI, .9)
+        + cylX(SW + 1.6, SW + 3, HANDLE[0] + 7 * Math.cos(r), HANDLE[1] + 7 * Math.sin(r), 1.6, PALS.mustard, toneI, .9, 12); }
+    // maker's plate under the dial
+    body += shape(on(PX(SW + .25), rrUV(DY0 + 6, 12, DY0 + 16, 16, .8)), '#e9c25a', .7);
+    body += ink(pd(on(PX(SW), OUT)), 2.2);
+  }
+  body += hullInk([...on(PX(0), OUT), ...on(PX(SW), OUT)], 2.8);
+  return s + body;
+}
+
+const ui = mountFigure({ fig: '05', title: 'Safe', size: [SW + 4, SD, SAFE_H + 4], palette: 'cobalt', state: {}, scene });
+</script>
+<script src="still.js"></script>
+</body></html>
