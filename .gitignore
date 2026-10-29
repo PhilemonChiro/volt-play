@@ -1,0 +1,6 @@
+wasm/devices/
+public/volt.wasm
+public/wasm_exec.js
+node_modules/
+dist/
+.DS_Store
