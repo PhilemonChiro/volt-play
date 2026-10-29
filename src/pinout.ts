@@ -6,6 +6,10 @@ export type PinState = { pin: Pin; line: number; problems: Diagnostic[] };
 export type DeviceState = { device: Device; line: number; problems: Diagnostic[] };
 
 const FLASH = new Set([6, 7, 8, 9, 10, 11]);
+
+// Rows seen in the last render; any other row is new and animates in.
+let seen = new Set<string>();
+let fresh = new Set<string>();
 const INPUT_ONLY = new Set([34, 35, 36, 39]);
 
 function linkRow(tr: HTMLTableRowElement, line: number, label: string, hooks: Hooks) {
@@ -65,6 +69,9 @@ function table(head: string[], rows: HTMLTableRowElement[]) {
 
 export function renderHardware(root: HTMLElement, pins: PinState[], devices: DeviceState[], hooks: Hooks) {
   const parts: HTMLElement[] = [];
+  const keys = [...pins.map((p) => `pin:${p.pin.name}`), ...devices.map((d) => `device:${d.device.name}`)];
+  fresh = new Set(seen.size ? keys.filter((k) => !seen.has(k)) : []);
+  seen = new Set(keys);
 
   if (pins.length) {
     const rows = [...pins]
@@ -75,7 +82,7 @@ export function renderHardware(root: HTMLElement, pins: PinState[], devices: Dev
         const note = FLASH.has(g) ? 'wired to the flash chip' : INPUT_ONLY.has(g) ? 'input only' : '';
         tr.title = note ? `GPIO ${g} is ${note}` : '';
         const worst = u.problems.some((d) => d.severity === 'error') ? 'is-error' : u.problems.length ? 'is-warning' : '';
-        if (worst) tr.className = worst;
+        tr.className = [worst, fresh.has(`pin:${u.pin.name}`) ? 'is-new' : ''].filter(Boolean).join(' ');
         tr.append(nameCell(u.pin.name, u.problems), cell(`GPIO ${g}`, 'hw-num'), cell(u.pin.mode, 'hw-dim'));
         linkRow(tr, u.line, `${u.pin.name}, ${u.pin.mode} on GPIO ${g}`, hooks);
         return tr;
@@ -87,7 +94,8 @@ export function renderHardware(root: HTMLElement, pins: PinState[], devices: Dev
     const rows = devices.map((u) => {
       const d = u.device;
       const tr = document.createElement('tr');
-      if (u.problems.length) tr.className = u.problems.some((p) => p.severity === 'error') ? 'is-error' : 'is-warning';
+      const worst = u.problems.length ? (u.problems.some((p) => p.severity === 'error') ? 'is-error' : 'is-warning') : '';
+      tr.className = [worst, fresh.has(`device:${d.name}`) ? 'is-new' : ''].filter(Boolean).join(' ');
       const bus = d.bus ? d.bus.toUpperCase() : '';
       const addr = d.address ? `0x${d.address.toString(16).toUpperCase().padStart(2, '0')}` : '';
       tr.append(nameCell(d.name, u.problems), cell(d.type), cell([bus, addr].filter(Boolean).join(' at '), 'hw-dim'));

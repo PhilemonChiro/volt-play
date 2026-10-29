@@ -1,6 +1,5 @@
 // Volt syntax colouring for CodeMirror, matching the landing page's
-// highlighter (web/src/lib/highlight.ts). The highlight style also colours
-// the generated C.
+// highlighter (web/src/lib/highlight.ts).
 import { StreamLanguage, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 

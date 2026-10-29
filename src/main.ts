@@ -1,10 +1,7 @@
 import './style.css';
-import { EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers } from '@codemirror/view';
-import { cpp } from '@codemirror/lang-cpp';
 import { loadCompiler, type Compiler, type Diagnostic } from './compiler';
-import { createEditor, replaceDoc, jumpTo, setProblems, setLinkedLine } from './editor';
-import { highlight } from './language';
+import { createEditor, replaceDoc, jumpTo, setProblems, setLinkedLine, setEditable } from './editor';
+import { tutorial } from './tutorial';
 import { renderHardware, markRow, type PinState, type DeviceState } from './pinout';
 import { examplesMenu } from './menu';
 import { examples } from './examples';
@@ -112,31 +109,6 @@ tabs.forEach((tab, i) => {
 const savedTab = tabs.find((t) => t.id === saved.get('volt-play:tab'));
 if (savedTab) selectTab(savedTab);
 
-// ---------- generated C (read-only) ----------
-const cView = new EditorView({
-  parent: $('#c-view'),
-  state: EditorState.create({
-    doc: '',
-    extensions: [lineNumbers(), cpp(), highlight, EditorState.readOnly.of(true), EditorView.editable.of(false)],
-  }),
-});
-let cText = '';
-function showC(text: string) {
-  if (text === cText) return;
-  cText = text;
-  cView.dispatch({ changes: { from: 0, to: cView.state.doc.length, insert: text } });
-}
-const copyC = $<HTMLButtonElement>('#copy-c');
-copyC.addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(cText);
-    copyC.textContent = 'Copied';
-  } catch {
-    copyC.textContent = 'Select the code to copy it';
-  }
-  setTimeout(() => (copyC.textContent = 'Copy'), 1600);
-});
-
 // ---------- checking ----------
 // The line declaring each pin or device, by name.
 function declLines(src: string, keyword: 'pin' | 'device'): Map<string, number> {
@@ -179,14 +151,13 @@ function check() {
     return { device, line, problems: at(line) };
   });
   linkedLines = new Set([...pins, ...devices].map((u) => u.line));
+  tutor.result({ diags, pins: res.pins ?? [], source: src });
   renderHardware($('#panel-pins'), pins, devices, {
     hover: (line) => view.dispatch({ effects: setLinkedLine.of(line) }),
     open: (line) => jumpTo(view, line),
   });
 
 
-  showC(errors ? '' : res.c_code);
-  $('#panel-c').classList.toggle('is-empty', errors > 0);
   statesStale = true;
   if (!$('#panel-states').hidden) drawStates();
 
@@ -278,6 +249,10 @@ async function drawStates() {
     try {
       const { svg } = await mermaid.render(`machine-${seq}-${i}`, m.mermaid);
       fig.insertAdjacentHTML('beforeend', svg);
+      // Small machines shouldn't balloon to fill the panel.
+      const el = fig.querySelector('svg');
+      const natural = el?.viewBox.baseVal.width;
+      if (el && natural) el.style.width = `min(100%, ${Math.round(natural * 1.4)}px)`;
     } catch {
       const p = document.createElement('p');
       p.className = 'aside';
@@ -331,7 +306,8 @@ const split = $('#split');
 const divider = $('#divider');
 function setSplit(pct: number) {
   const clamped = Math.min(75, Math.max(35, pct));
-  split.style.setProperty('--code', `${clamped}%`);
+  split.style.setProperty('--code', `${clamped}fr`);
+  split.style.setProperty('--side', `${100 - clamped}fr`);
   divider.setAttribute('aria-valuenow', String(Math.round(clamped)));
   saved.set('volt-play:split', String(clamped));
 }
@@ -341,8 +317,12 @@ divider.setAttribute('aria-valuemax', '75');
 divider.addEventListener('pointerdown', (e) => {
   divider.setPointerCapture(e.pointerId);
   split.classList.add('is-resizing');
+  // The lesson column, when open, isn't part of the code/results split.
+  const lesson = $('#lesson');
   const rect = split.getBoundingClientRect();
-  const move = (ev: PointerEvent) => setSplit(((ev.clientX - rect.left) / rect.width) * 100);
+  const left = rect.left + (lesson.hidden ? 0 : lesson.getBoundingClientRect().width);
+  const width = rect.right - left;
+  const move = (ev: PointerEvent) => setSplit(((ev.clientX - left) / width) * 100);
   const up = () => {
     split.classList.remove('is-resizing');
     divider.removeEventListener('pointermove', move);
@@ -359,6 +339,15 @@ divider.addEventListener('keydown', (e) => {
   e.preventDefault();
 });
 divider.addEventListener('dblclick', () => setSplit(60));
+
+// ---------- tutorial ----------
+const tutor = tutorial({
+  view,
+  showPanel: (p) => selectTab($<HTMLButtonElement>(`#tab-${p}`)),
+  setEditable: (on) => setEditable(view, on),
+  openExamples: () => $<HTMLButtonElement>('.menu-button').click(),
+  store: saved,
+});
 
 // ---------- start ----------
 setStatus('loading', 'Loading the compiler');

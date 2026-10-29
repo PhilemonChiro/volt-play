@@ -1,7 +1,7 @@
 // The code editor: Volt colouring, problems shown under the line they're on
 // (with the compiler's one-click fixes), and a highlight for the line linked
 // to a pin hovered in the pinout.
-import { EditorState, StateEffect, StateField, RangeSetBuilder, type Range } from '@codemirror/state';
+import { EditorState, StateEffect, StateField, RangeSetBuilder, Compartment, type Range } from '@codemirror/state';
 import {
   EditorView, Decoration, WidgetType, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter,
   drawSelection, type DecorationSet,
@@ -126,6 +126,32 @@ const problemField = StateField.define<DecorationSet>({
 
 export const setLinkedLine = StateEffect.define<number | null>();
 
+// Lines a tutorial step is about; the others dim (see .has-spot in style.css).
+export const setSpotlight = StateEffect.define<number[]>();
+
+const spotField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (!e.is(setSpotlight)) continue;
+      const b = new RangeSetBuilder<Decoration>();
+      for (const n of [...new Set(e.value)].sort((x, y) => x - y)) {
+        if (n >= 1 && n <= tr.state.doc.lines) {
+          const from = tr.state.doc.line(n).from;
+          b.add(from, from, Decoration.line({ class: 'cm-spot' }));
+        }
+      }
+      deco = b.finish();
+    }
+    return deco;
+  },
+  provide: (f) => [
+    EditorView.decorations.from(f),
+    EditorView.editorAttributes.from(f, (d): Record<string, string> => (d.size ? { class: 'has-spot' } : {})),
+  ],
+});
+
 const linkedField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
   update(deco, tr) {
@@ -144,6 +170,13 @@ const linkedField = StateField.define<DecorationSet>({
   },
   provide: (f) => EditorView.decorations.from(f),
 });
+
+const editable = new Compartment();
+
+// Pauses typing while the tutorial types a step's program.
+export function setEditable(view: EditorView, on: boolean) {
+  view.dispatch({ effects: editable.reconfigure(EditorView.editable.of(on)) });
+}
 
 export function createEditor(opts: {
   parent: HTMLElement;
@@ -176,6 +209,8 @@ export function createEditor(opts: {
         voltLanguage,
         problemField,
         linkedField,
+        spotField,
+        editable.of(EditorView.editable.of(true)),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) opts.onChange();
           if (u.selectionSet || u.docChanged) opts.onCursorLine(u.state.doc.lineAt(u.state.selection.main.head).number);
@@ -193,4 +228,50 @@ export function jumpTo(view: EditorView, line: number, col = 1) {
   const pos = offset(view.state, line, col);
   view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: 'center' }) });
   view.focus();
+}
+
+// Changes the document to target as if typed: the common start and end stay,
+// the changed middle is removed, then the new text is typed in. It takes at
+// most `budget` milliseconds; with reduced motion it happens at once.
+export function typeTo(view: EditorView, target: string, budget = 1100): Promise<void> {
+  const doc = view.state.doc.toString();
+  if (doc === target) return Promise.resolve();
+  let start = 0;
+  while (start < doc.length && start < target.length && doc[start] === target[start]) start++;
+  let end = 0;
+  while (
+    end < doc.length - start &&
+    end < target.length - start &&
+    doc[doc.length - 1 - end] === target[target.length - 1 - end]
+  )
+    end++;
+  const insert = target.slice(start, target.length - end);
+  view.dispatch({ changes: { from: start, to: doc.length - end, insert: '' }, selection: { anchor: start }, scrollIntoView: true });
+  if (!insert) return Promise.resolve();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    view.dispatch({ changes: { from: start, insert }, selection: { anchor: start + insert.length } });
+    return Promise.resolve();
+  }
+  const perChar = Math.min(22, budget / insert.length);
+  const t0 = performance.now();
+  let done = 0;
+  return new Promise((resolve) => {
+    const step = (now: number) => {
+      let want = Math.min(insert.length, Math.floor((now - t0) / perChar) + 1);
+      // Indentation arrives in one go, as an editor's auto-indent would.
+      while (want < insert.length && insert[want] === ' ' && insert[want - 1] === ' ') want++;
+      if (want > done) {
+        const pos = start + done;
+        view.dispatch({
+          changes: { from: pos, insert: insert.slice(done, want) },
+          selection: { anchor: start + want },
+          scrollIntoView: true,
+        });
+        done = want;
+      }
+      if (done < insert.length) requestAnimationFrame(step);
+      else resolve();
+    };
+    requestAnimationFrame(step);
+  });
 }

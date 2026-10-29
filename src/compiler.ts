@@ -21,7 +21,6 @@ export type Device = { name: string; type: string; bus: string; address: number 
 
 export type Compiled = {
   diagnostics: Diagnostic[] | null;
-  c_code: string;
   pins: Pin[] | null;
   devices: Device[] | null;
   error?: string;

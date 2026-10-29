@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Volt Playground</title>
-    <meta name="description" content="Write Volt in your browser. Every pin is checked against the ESP32 as you type, with the generated C and state machine diagrams alongside." />
+    <meta name="description" content="Write Volt in your browser. Every pin is checked against the ESP32 as you type, with state machine diagrams alongside." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,6 +26,8 @@
         <ul class="menu-list" id="example-list" role="listbox" aria-label="Examples" tabindex="-1" hidden></ul>
       </div>
 
+      <button type="button" class="quiet learn" id="learn" aria-pressed="false" aria-controls="lesson">Learn Volt</button>
+
       <div class="top-actions">
         <button type="button" class="quiet" id="format" title="Format (⌘S)">Format</button>
         <button type="button" class="quiet" id="share">Share</button>
@@ -34,6 +36,21 @@
     </header>
 
     <main class="split" id="split">
+      <aside class="lesson" id="lesson" aria-label="Learn Volt" hidden>
+        <div class="lesson-inner">
+          <div class="lesson-top">
+            <span class="lesson-step" id="lesson-step"></span>
+            <button type="button" class="quiet" id="lesson-close">Close</button>
+          </div>
+          <div class="lesson-track" aria-hidden="true"><span id="lesson-progress"></span></div>
+          <div class="lesson-content" id="lesson-content" aria-live="polite"></div>
+          <div class="lesson-foot">
+            <button type="button" class="quiet" id="lesson-back">Back</button>
+            <button type="button" class="solid" id="lesson-next">Continue</button>
+          </div>
+        </div>
+      </aside>
+
       <section class="pane code" aria-label="Program">
         <div class="pane-head">
           <span>main.volt</span>
@@ -48,15 +65,10 @@
         <div class="tabs" role="tablist" aria-label="Results">
           <button role="tab" id="tab-pins" aria-controls="panel-pins" aria-selected="true">Hardware</button>
           <button role="tab" id="tab-problems" aria-controls="panel-problems" aria-selected="false" tabindex="-1">Problems<span class="count" id="problem-count"></span></button>
-          <button role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false" tabindex="-1">C</button>
           <button role="tab" id="tab-states" aria-controls="panel-states" aria-selected="false" tabindex="-1">State machines</button>
         </div>
         <div class="panel" id="panel-pins" role="tabpanel" aria-labelledby="tab-pins"></div>
         <div class="panel" id="panel-problems" role="tabpanel" aria-labelledby="tab-problems" hidden></div>
-        <div class="panel panel-c" id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden>
-          <button type="button" class="quiet copy-c" id="copy-c">Copy</button>
-          <div id="c-view"></div>
-        </div>
         <div class="panel" id="panel-states" role="tabpanel" aria-labelledby="tab-states" hidden></div>
       </section>
     </main>
