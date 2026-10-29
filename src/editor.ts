@@ -295,7 +295,8 @@ class NotesWidget extends WidgetType {
     const ROW = 30;
     const box = document.createElement('div');
     box.className = 'cm-notes';
-    box.style.height = `${sorted.length * ROW + 6}px`;
+    // Vertical space is height, never margin, so the line numbers stay aligned.
+    box.style.height = `${sorted.length * ROW + 10}px`;
     sorted.forEach((n, row) => {
       const delay = row * 110;
       const centre = `calc(${n.col - 1 + n.len / 2}ch)`;
@@ -332,7 +333,12 @@ class HostWidget extends WidgetType {
     return o.el === this.el;
   }
   toDOM() {
-    return this.el;
+    // CodeMirror measures a block widget's border box, so spacing lives on
+    // this wrapper's padding, not the card's margins.
+    const wrap = document.createElement('div');
+    wrap.className = 'cm-host';
+    wrap.append(this.el);
+    return wrap;
   }
   ignoreEvent() {
     return true;

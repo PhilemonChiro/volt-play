@@ -401,6 +401,13 @@ $('#learn').addEventListener('click', dismissIntro);
 setStatus('loading', 'Loading the compiler');
 try {
   compiler = await loadCompiler();
+  // Links from the Learn Volt page open a course: /?learn=<course>.
+  const learn = new URLSearchParams(location.search).get('learn');
+  if (learn) {
+    window.history.replaceState(null, '', location.pathname);
+    dismissIntro();
+    tutor.open(learn);
+  }
   check();
   if (linkNotice) setStatus('warning', linkNotice);
 } catch {

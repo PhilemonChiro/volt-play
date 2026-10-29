@@ -1,0 +1,49 @@
+/* Colours and type match voltembedded.com (web/src/layouts/Base.astro). */
+:root {
+  --paper: #f3f5f4;
+  --sheet: #ffffff;
+  --ink: #0e1c26;
+  --muted: #5b6b75;
+  --faint: #8a979f;
+  --rule: #dfe5e7;
+  --line-strong: #b9c4c9;
+  --signal: #2b7cb3;
+  --fault: #c93a3a;
+  --warn: #b57a0c;
+  --pass: #1f8a5b;
+  --c-keyword: #1f5f8b;
+  --c-type: #6b4fb3;
+  --c-string: #2f7a3e;
+  --c-number: #9a6b12;
+  --c-comment: #7a8a94;
+  --display: 'Michroma', 'Chivo', system-ui, sans-serif;
+  --sans: 'Chivo', system-ui, -apple-system, sans-serif;
+  --mono: 'Chivo Mono', ui-monospace, 'SF Mono', monospace;
+  --shadow: 0 1px 2px rgb(14 28 38 / 0.06), 0 8px 24px rgb(14 28 38 / 0.1);
+  /* One easing for the whole page: quick to start, gentle to settle. */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0b1823;
+    --sheet: #0e1f2b;
+    --ink: #e3eaec;
+    --muted: #98a8b0;
+    --faint: #6c7f89;
+    --rule: #1c3140;
+    --line-strong: #2e4757;
+    --signal: #5aa7dc;
+    --fault: #f0645c;
+    --warn: #e0a33a;
+    --pass: #3fbf86;
+    --c-keyword: #7cc0ee;
+    --c-type: #b9a2ff;
+    --c-string: #8fd18f;
+    --c-number: #e6c878;
+    --c-comment: #6f8592;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.4);
+    color-scheme: dark;
+  }
+}
+
