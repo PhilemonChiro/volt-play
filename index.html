@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Volt Playground</title>
+    <meta name="description" content="Write Volt in your browser. Every pin is checked against the ESP32 datasheet as you type, and you can read the C it generates." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500&family=Chivo:wght@400;500;700&family=Michroma&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <header class="bar">
+      <a class="brand" href="https://voltembedded.com"><img src="/volt-logo.svg" alt="" width="22" height="19" />Volt</a>
+      <span class="title">Playground</span>
+      <div class="actions">
+        <label class="visually-hidden" for="example">Example</label>
+        <select id="example"></select>
+        <button type="button" id="format">Format</button>
+        <button type="button" id="share">Copy link</button>
+        <a class="cta" href="https://voltembedded.com/#download">Download the IDE</a>
+      </div>
+    </header>
+
+    <main class="work">
+      <section class="editor" aria-label="Program">
+        <div id="editor"></div>
+      </section>
+
+      <section class="output" aria-label="Results">
+        <div class="tabs" role="tablist">
+          <button role="tab" id="tab-problems" aria-controls="panel-problems" aria-selected="true">Problems</button>
+          <button role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false">Generated C</button>
+          <button role="tab" id="tab-states" aria-controls="panel-states" aria-selected="false">State machines</button>
+        </div>
+        <div class="panel" id="panel-problems" role="tabpanel" aria-labelledby="tab-problems"></div>
+        <div class="panel" id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden><pre><code></code></pre></div>
+        <div class="panel" id="panel-states" role="tabpanel" aria-labelledby="tab-states" hidden></div>
+      </section>
+    </main>
+
+    <footer class="status" aria-live="polite"><span id="status">Loading the compiler…</span></footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
