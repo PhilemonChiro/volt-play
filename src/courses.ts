@@ -572,9 +572,9 @@ const failures: Lesson[] = [
 ];
 
 export const courses: Course[] = [
-  { id: 'tour', title: 'The tour', about: 'Build a lamp with a button, a heartbeat and a saved count.', steps: tour },
+  { id: 'tour', title: 'The tour', about: 'A lamp with a button and a saved count.', steps: tour },
   { id: 'pins', title: 'Pins and modes', about: 'What each pin can do, and how Volt keeps you to it.', steps: pins },
-  { id: 'time', title: 'Time', about: 'Timers, units, and blocks that only run when they should.', steps: time },
+  { id: 'time', title: 'Time', about: 'Timers, units and conditions.', steps: time },
   { id: 'machines', title: 'State machines', about: 'Behaviour as states, with guards and actions.', steps: machines },
   { id: 'tasks', title: 'Tasks', about: 'Grouping work, and how Volt chooses how it runs.', steps: tasks },
   { id: 'devices', title: 'Sensors and parts', about: 'Use a part from the library by its name.', steps: devices },

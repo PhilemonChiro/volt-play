@@ -8,7 +8,9 @@ import { spotLines, type Course, type Lesson, type Result } from './lessons';
 import { courses } from './courses';
 import { typeTo, setSpotlight, setNotes, setCallout, type Note } from './editor';
 import { renderTimeline } from './timeline';
-import { illustrations, hues } from './illustrations';
+import { hues } from './illustrations';
+// Where each course image's labels point, measured when the images were rendered.
+import labelSpots from './learn-labels.json';
 
 type Panel = 'pins' | 'problems' | 'states';
 type Deps = {
@@ -104,15 +106,33 @@ export function tutorial(d: Deps) {
         if (isDone) b.classList.add('is-done');
         b.style.setProperty('--hue', String(hues[c.id] ?? 205));
         const art = el('span', 'ls-art');
-        art.innerHTML = illustrations[c.id] ?? '';
+        const img = el('img') as HTMLImageElement;
+        img.src = `/learn/${c.id}.webp`;
+        img.alt = '';
+        img.decoding = 'async';
+        art.append(img);
+        for (const spot of (labelSpots as Record<string, { x: number; y: number; text: string; tone?: string }[]>)[c.id] ?? []) {
+          const tag = el('span', `ls-tag${spot.tone ? ` is-${spot.tone}` : ''}${spot.x > 0.6 ? ' is-flip' : ''}`, spot.text);
+          tag.style.setProperty('--n', String(art.querySelectorAll('.ls-tag').length));
+          tag.style.left = `${spot.x * 100}%`;
+          tag.style.top = `${spot.y * 100}%`;
+          art.append(tag);
+        }
         const body = el('span', 'ls-body');
+        const resumeAt = c.id === inProgress ? Number(d.store.get('volt-play:lesson')) || 0 : 0;
         const seen = isDone ? c.steps.length : Math.min(stepsSeen(c.id), c.steps.length);
-        const state = isDone ? 'Done' : seen ? `${seen} of ${c.steps.length} steps` : `${c.steps.length} steps`;
+        const state = isDone
+          ? 'Done'
+          : resumeAt
+            ? `Continue, ${seen} of ${c.steps.length} steps`
+            : c === next && finished.size
+              ? `Up next, ${c.steps.length} steps`
+              : seen
+                ? `${seen} of ${c.steps.length} steps`
+                : `${c.steps.length} steps`;
         body.append(el('span', 'ls-name', c.title), el('span', 'ls-about', c.about), el('span', 'ls-state', state));
         b.append(art, body);
-        if (c === next && finished.size && c.id !== inProgress) b.append(el('span', 'ls-next', 'Up next'));
-        const resumeAt = c.id === inProgress ? Number(d.store.get('volt-play:lesson')) || 0 : 0;
-        if (resumeAt) b.append(el('span', 'ls-next', 'Continue'));
+
         b.addEventListener('click', () => start(c, resumeAt));
         li.append(b);
         return li;
