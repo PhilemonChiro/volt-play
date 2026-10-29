@@ -1379,14 +1379,14 @@ main.split {
   box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--signal);
 }
 /* The drawing, on a soft wash of the course's colour. */
-/* Each course's illustration (art/*.html, drawn with Colorfigures), on its own paper. */
+/* Each course's illustration (art/*.html, drawn with Colorfigures), standing on the tile. */
 .ls-art {
   position: relative;
   display: block;
   aspect-ratio: 3 / 2;
   border-radius: 10px;
   overflow: hidden;
-  background: #efece4;
+  background: radial-gradient(90% 80% at 50% 45%, color-mix(in srgb, var(--ink) 9%, var(--sheet)), var(--sheet));
   transition: box-shadow 160ms ease;
 }
 .ls-art img {
