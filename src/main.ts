@@ -184,6 +184,7 @@ function check() {
     open: (line) => jumpTo(view, line),
   });
 
+
   showC(errors ? '' : res.c_code);
   $('#panel-c').classList.toggle('is-empty', errors > 0);
   statesStale = true;

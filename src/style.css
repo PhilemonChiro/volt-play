@@ -206,6 +206,8 @@ button,
 .pane.code {
   background: var(--sheet);
 }
+
+
 .pane-head {
   display: flex;
   align-items: center;
