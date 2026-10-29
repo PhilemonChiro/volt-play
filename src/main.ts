@@ -152,7 +152,11 @@ function check() {
   });
   linkedLines = new Set([...pins, ...devices].map((u) => u.line));
   tutor.result({ diags, pins: res.pins ?? [], source: src });
-  renderHardware($('#panel-pins'), pins, devices, {
+  // While the program doesn't parse, keep the last good table, dimmed, rather than an empty one.
+  const pinsPanel = $('#panel-pins');
+  const broken = errors > 0 && !pins.length && !devices.length && pinsPanel.querySelector('table');
+  pinsPanel.classList.toggle('is-stale', !!broken);
+  if (!broken) renderHardware(pinsPanel, pins, devices, {
     hover: (line) => view.dispatch({ effects: setLinkedLine.of(line) }),
     open: (line) => jumpTo(view, line),
   });
@@ -165,7 +169,7 @@ function check() {
   const say = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
   if (errors) setStatus('error', warnings ? `${say(errors, 'error')}, ${say(warnings, 'warning')}` : say(errors, 'error'), ms);
   else if (warnings) setStatus('warning', say(warnings, 'warning'), ms);
-  else setStatus('ok', 'Ready to build for the ESP32', ms);
+  else setStatus('ok', 'No problems found', ms);
 }
 
 function renderProblems(diags: Diagnostic[]) {
@@ -275,7 +279,8 @@ function format() {
   if (res.code !== view.state.doc.toString()) {
     const head = view.state.selection.main.head;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: res.code }, selection: { anchor: Math.min(head, res.code.length) } });
-  }
+    flash('Formatted');
+  } else flash('Already formatted');
 }
 $('#format').addEventListener('click', () => {
   format();
@@ -295,8 +300,25 @@ share.addEventListener('click', async () => {
   setTimeout(() => (share.textContent = 'Share'), 1800);
 });
 
+// A short note in the status bar that gives way to the check result.
+let flashTimer = 0;
+function flash(text: string) {
+  clearTimeout(flashTimer);
+  // After the re-check that an edit triggers, so the note isn't overwritten.
+  flashTimer = window.setTimeout(() => {
+    const prev = stateText.textContent;
+    stateText.textContent = text;
+    flashTimer = window.setTimeout(() => {
+      if (stateText.textContent === text) stateText.textContent = prev;
+    }, 2600);
+  }, 180);
+}
+
 examplesMenu($('#examples'), examples, (ex) => {
+  if (tutor.isOpen) tutor.close(true);
+  const edited = view.state.doc.toString();
   replaceDoc(view, ex.source);
+  if (edited.trim() && !examples.some((e) => e.source === edited)) flash(`Opened ${ex.name}. Press ⌘Z to get your program back.`);
   window.history.replaceState(null, '', location.pathname);
   view.focus();
 });
@@ -348,6 +370,20 @@ const tutor = tutorial({
   openExamples: () => $<HTMLButtonElement>('.menu-button').click(),
   store: saved,
 });
+
+// ---------- first visit ----------
+const intro = $('#intro');
+if (saved.get('volt-play:intro') !== 'seen' && !location.hash) intro.hidden = false;
+function dismissIntro() {
+  intro.hidden = true;
+  saved.set('volt-play:intro', 'seen');
+}
+$('#intro-close').addEventListener('click', dismissIntro);
+$('#intro-tour').addEventListener('click', () => {
+  dismissIntro();
+  tutor.open();
+});
+$('#learn').addEventListener('click', dismissIntro);
 
 // ---------- start ----------
 setStatus('loading', 'Loading the compiler');

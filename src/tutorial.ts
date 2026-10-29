@@ -67,9 +67,12 @@ export function tutorial(d: Deps) {
       const slip = document.createElement('p');
       slip.className = 'try-slip';
       slip.id = 'lesson-slip';
+      // The inner span keeps the sentence in one piece inside the grid that animates its height.
       const after = document.createElement('p');
       after.className = 'try-after';
-      after.append(...withCode(l.try.after));
+      const afterText = document.createElement('span');
+      afterText.append(...withCode(l.try.after));
+      after.append(afterText);
       box.append(head, show, slip, after);
       frag.append(box);
     }
@@ -88,10 +91,10 @@ export function tutorial(d: Deps) {
       frag.append(list);
       const row = document.createElement('div');
       row.className = 'finish';
-      const ide = document.createElement('a');
-      ide.className = 'solid';
-      ide.href = 'https://voltembedded.com/#download';
-      ide.textContent = 'Get Volt IDE';
+      const ide = document.createElement('p');
+      ide.className = 'lesson-text next-step';
+      ide.textContent = 'To run it, Volt IDE builds this program and flashes it to an ESP32 over USB, with the same checks as you type.';
+      frag.append(ide);
       const ex = document.createElement('button');
       ex.type = 'button';
       ex.className = 'quiet';
@@ -100,7 +103,11 @@ export function tutorial(d: Deps) {
         close(true);
         d.openExamples();
       });
-      row.append(ide, ex);
+      const get = document.createElement('a');
+      get.className = 'solid';
+      get.href = 'https://voltembedded.com/#download';
+      get.textContent = 'Get Volt IDE';
+      row.append(get, ex);
       frag.append(row);
     }
     content.replaceChildren(frag);
@@ -117,7 +124,8 @@ export function tutorial(d: Deps) {
     await wait(150);
     if (run !== busy) return;
     render(index);
-    stepLabel.textContent = `${index + 1} of ${lessons.length}`;
+    // The welcome isn't a step, so the count matches "eight short steps".
+    stepLabel.textContent = index === 0 ? 'Welcome' : `Step ${index} of ${lessons.length - 1}`;
     bar.style.transform = `scaleX(${(index + 1) / lessons.length})`;
     back.disabled = index === 0;
     next.textContent = l.recap ? 'Done' : index === 0 ? 'Start' : 'Continue';
@@ -146,10 +154,15 @@ export function tutorial(d: Deps) {
     if (!l.try.done(r)) {
       // A typo shouldn't leave someone stuck: point at it.
       const err = l.try.wantsError ? undefined : r.diags.find((d) => d.severity === 'error');
-      if (slip) slip.textContent = err ? `Not quite yet: there’s an error on line ${err.line}. Its message is in the editor.` : '';
+      const nudge = l.try.nudge?.(r);
+      if (slip) {
+        slip.replaceChildren(
+          ...(err ? [document.createTextNode(`Not quite yet: there’s an error on line ${err.line}. Its message is in the editor.`)] : nudge ? withCode(nudge) : []),
+        );
+      }
       return;
     }
-    if (slip) slip.textContent = '';
+    if (slip) slip.replaceChildren();
     met = true;
     $('#lesson-try')?.classList.add('is-met');
     next.disabled = false;
@@ -190,7 +203,9 @@ export function tutorial(d: Deps) {
       if (!isOpen) panel.hidden = true;
     }, reduced() ? 0 : 460);
     const before = d.store.get('volt-play:before-lesson');
-    if (!keep && before !== null) typeTo(d.view, before, 0);
+    if (!keep && before !== null) {
+      typeTo(d.view, before, 0).then(() => d.view.dispatch({ selection: { anchor: 0 }, scrollIntoView: true }));
+    }
     if (lessons[index].recap) d.store.set('volt-play:lesson', '0');
     d.view.focus();
   }

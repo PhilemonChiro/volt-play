@@ -25,6 +25,8 @@ export type Lesson = {
     after: string;
     // The goal is an error, so errors aren't pointed out as a slip.
     wantsError?: boolean;
+    // A nudge for a near miss the compiler doesn't flag.
+    nudge?: (r: Result) => string | null;
   };
   recap?: { word: string; meaning: string }[];
 };
@@ -77,7 +79,7 @@ export const lessons: Lesson[] = [
     title: 'Learn Volt',
     body: [
       'Volt is a language for microcontrollers. In eight short steps you’ll write the program beside this: a lamp with a button, a heartbeat light, and a count that survives a power cut.',
-      'You’ll write most of it yourself, and the compiler checks every step.',
+      'You’ll make the key changes yourself, and the compiler checks each one.',
     ],
     code: (lamp) => withStorage(lamp, true),
     preview: true,
@@ -134,6 +136,7 @@ export const lessons: Lesson[] = [
       answer: (lamp) => hw(lamp, true) + beat('500ms'),
       done: (r) => !errors(r).length && /every\s+(500ms|0\.5s)\s*\{\s*heartbeat/.test(r.source),
       after: 'Times carry their unit, like `500ms` or `2s`, so a number never leaves you guessing.',
+      nudge: (r) => (/every\s+\d+\s*\{/.test(r.source) ? 'Add a unit to the time, like `500ms`.' : null),
     },
   },
   {
@@ -157,6 +160,7 @@ export const lessons: Lesson[] = [
       answer: (lamp) => hw(lamp, true, true) + beat('500ms') + machine('10s'),
       done: (r) => !errors(r).length && /after\s+(10s|10000ms)\s*->\s*dark/.test(r.source),
       after: 'Look at the arrow from `lit` back to `dark`. Its label changed as you typed.',
+      nudge: (r) => (/after\s+\d+\s*->/.test(r.source) ? 'Add a unit to the time, like `10s`.' : null),
     },
   },
   {
@@ -180,7 +184,9 @@ export const lessons: Lesson[] = [
   },
   {
     title: 'You wrote Volt',
-    body: ['The program beside this is yours. Four ideas carry most of the language:'],
+    body: [
+      'The program beside this is yours. Four ideas carry most of the language:',
+    ],
     code: (lamp) => withStorage(lamp, true),
     recap: [
       { word: 'hardware', meaning: 'the board, checked against its datasheet' },
