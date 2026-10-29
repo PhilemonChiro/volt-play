@@ -74,7 +74,7 @@ const withStorage = (lamp: number, saved: boolean) =>
 const FLASH = new Set([6, 7, 8, 9, 10, 11]);
 const errors = (r: Result) => r.diags.filter((d) => d.severity === 'error');
 
-export const lessons: Lesson[] = [
+export const tour: Lesson[] = [
   {
     title: 'Learn Volt',
     body: [
@@ -196,6 +196,8 @@ export const lessons: Lesson[] = [
     ],
   },
 ];
+
+export type Course = { id: string; title: string; about: string; steps: Lesson[] };
 
 // Line numbers of the lines containing any of the given texts.
 export function spotLines(code: string, texts: string[] = []): number[] {

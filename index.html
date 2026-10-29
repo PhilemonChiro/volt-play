@@ -39,12 +39,16 @@
       <aside class="lesson" id="lesson" aria-label="Learn Volt" hidden>
         <div class="lesson-inner">
           <div class="lesson-top">
-            <span class="lesson-step" id="lesson-step"></span>
+            <button type="button" class="quiet lesson-courses" id="lesson-courses" hidden>
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 2 3.5 5 6.5 8" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+              All courses
+            </button>
             <button type="button" class="quiet" id="lesson-close">Close</button>
           </div>
+          <span class="lesson-step" id="lesson-step"></span>
           <div class="lesson-track" aria-hidden="true"><span id="lesson-progress"></span></div>
           <div class="lesson-content" id="lesson-content" aria-live="polite"></div>
-          <div class="lesson-foot">
+          <div class="lesson-foot" id="lesson-foot">
             <button type="button" class="quiet" id="lesson-back">Back</button>
             <button type="button" class="solid" id="lesson-next">Continue</button>
           </div>

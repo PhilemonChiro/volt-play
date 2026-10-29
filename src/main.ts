@@ -381,7 +381,7 @@ function dismissIntro() {
 $('#intro-close').addEventListener('click', dismissIntro);
 $('#intro-tour').addEventListener('click', () => {
   dismissIntro();
-  tutor.open();
+  tutor.open('tour');
 });
 $('#learn').addEventListener('click', dismissIntro);
 
