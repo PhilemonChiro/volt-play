@@ -1295,7 +1295,7 @@ tr.is-error .hw-num {
   margin: 0 auto;
 }
 
-/* ---------- Learn Volt: the landing screen ---------- */
+/* ---------- Learn Volt: the course window ---------- */
 main.split {
   grid-row: 2;
   grid-column: 1;
@@ -1303,452 +1303,177 @@ main.split {
 .status {
   grid-row: 3;
 }
-.learn-home {
+/* The course gallery: a view of the app, in place of the workspace. */
+.learn-view {
   grid-row: 2;
   grid-column: 1;
   z-index: 10;
   overflow: auto;
   background: var(--paper);
-  animation: home-in 420ms var(--ease) both;
+  animation: fade 200ms ease both;
 }
-.learn-home[hidden] {
+.learn-view[hidden] {
   display: none;
 }
-@keyframes home-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-.lh-inner {
-  width: min(1080px, 100% - 48px);
+.lv-inner {
+  width: min(980px, 100% - 40px);
   margin: 0 auto;
-  padding: 20px 0 72px;
+  padding: 28px 0 40px;
 }
-.lh-top {
-  display: flex;
-  justify-content: flex-end;
-  margin-right: -10px;
+.ls-head {
+  padding: 0 6px 16px;
 }
-.lh-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 40px;
-  align-items: center;
-  padding: 32px 0 64px;
-}
-@media (min-width: 980px) {
-  .lh-hero {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    gap: 56px;
-    padding: 40px 0 80px;
-  }
-}
-.lh-text h1 {
+.ls-title {
   margin: 0;
-  font: 400 clamp(30px, 3.8vw, 44px) / 1.14 var(--display);
-  letter-spacing: -0.01em;
-  max-width: 17ch;
-  text-wrap: balance;
-}
-.lh-lede {
-  margin-top: 20px;
-  max-width: 44ch;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-.lh-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 28px;
-}
-.big {
-  height: 42px !important;
-  padding: 0 18px !important;
-  font-size: 14.5px;
-  border-radius: 10px !important;
-  margin-left: 0 !important;
-}
-.ghost {
-  display: inline-flex;
-  align-items: center;
-  color: var(--ink);
-  text-decoration: none;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-  font-weight: 500;
-}
-.ghost:hover {
-  box-shadow: inset 0 0 0 1px var(--ink);
-}
-.lh-progress {
-  margin-top: 14px;
-  color: var(--muted);
-}
-
-.lh-how {
-  list-style: none;
-  counter-reset: step;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 28px;
-  margin: 0;
-  padding: 0 0 64px;
-}
-@media (min-width: 820px) {
-  .lh-how {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 36px;
-  }
-}
-.lh-how li {
-  counter-increment: step;
-  padding-top: 16px;
-  border-top: 2px solid var(--ink);
-}
-.lh-how li::before {
-  content: counter(step);
-  display: block;
-  margin-bottom: 10px;
-  font: 400 12px var(--display);
-  color: var(--signal);
-}
-.lh-how h3 {
-  margin: 0;
-  font: 600 16px/1.3 var(--sans);
-}
-.lh-how p {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 14.5px;
-  max-width: 34ch;
-}
-
-.lh-catalog-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px 24px;
-}
-.lh-catalog-head h2 {
-  margin: 0;
-  font: 600 22px/1.2 var(--sans);
+  font: 600 20px/1.25 var(--sans);
   letter-spacing: -0.01em;
 }
-.lh-catalog-head p {
+.ls-sub {
+  margin-top: 2px;
   color: var(--muted);
 }
-.lh-courses {
+.ls-grid {
   list-style: none;
-  margin: 20px 0 0;
+  margin: 0;
   padding: 0;
-  border-top: 1px solid var(--rule);
-}
-.lh-row {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto 18px;
-  align-items: center;
-  gap: 4px 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
+}
+@media (max-width: 760px) {
+  .ls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 500px) {
+  .ls-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ls-tile {
+  --tint: hsl(var(--hue) 70% 52%);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
   width: 100%;
-  padding: 16px 8px;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
+  height: 100%;
+  padding: 6px;
+  border: 0;
+  border-radius: 14px;
   text-align: left;
-  transition: background 160ms ease;
+  background: transparent;
+  transition: background 160ms ease, transform 160ms var(--ease);
 }
-@media (min-width: 760px) {
-  .lh-row {
-    grid-template-columns: 44px minmax(0, 1fr) 160px 84px 18px;
-  }
+.ls-tile:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
 }
-.lh-row:hover {
-  background: color-mix(in srgb, var(--ink) 3.5%, transparent);
+.ls-tile:active {
+  transform: scale(0.985);
 }
-.lh-num {
-  font: 400 12px var(--display);
-  color: var(--faint);
+.ls-tile[aria-selected='true'],
+.ls-tile:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
 }
-.lh-text-col {
+.ls-tile[aria-selected='true'] .ls-art,
+.ls-tile:focus-visible .ls-art {
+  box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--tint);
+}
+/* The drawing, on a soft wash of the course's colour. */
+.ls-art {
   display: grid;
+  place-items: center;
+  height: 112px;
+  border-radius: 10px;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 13%, var(--sheet));
+  transition: box-shadow 160ms ease;
+}
+.ls-art svg {
+  width: 176px;
+  height: auto;
+  transition: transform 300ms var(--ease);
+}
+.ls-tile:hover .ls-art svg {
+  transform: scale(1.04);
+}
+.ls-body {
+  display: grid;
+  align-content: start;
   gap: 2px;
+  padding: 10px 4px 4px;
 }
-.lh-title {
+.ls-name {
   font-weight: 600;
-  font-size: 15.5px;
+  font-size: 14px;
 }
-.lh-about {
+.ls-about {
   color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.lh-key {
-  display: none;
-  justify-self: start;
-  font: 12.5px var(--mono);
-  padding: 3px 8px;
-  border-radius: 6px;
-  color: var(--c-keyword);
-  background: color-mix(in srgb, var(--c-keyword) 11%, transparent);
-}
-@media (min-width: 760px) {
-  .lh-key {
-    display: inline-block;
-  }
-}
-.lh-meta {
+.ls-state {
+  margin-top: 4px;
   color: var(--faint);
-  white-space: nowrap;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.lh-go svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: var(--faint);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  transition: transform 200ms var(--ease), stroke 160ms ease;
-}
-.lh-row:hover .lh-go svg {
-  stroke: var(--ink);
-  transform: translateX(3px);
-}
-.lh-row.is-done .lh-num,
-.lh-row.is-done .lh-meta {
+.is-done .ls-state {
   color: var(--pass);
 }
-.lh-row.is-next {
-  background: color-mix(in srgb, var(--signal) 7%, transparent);
+.is-done .ls-state::before {
+  content: '✓ ';
 }
-.lh-courses li {
-  animation: rise 380ms var(--ease) both;
-}
-.lh-courses li:nth-child(n) {
-  animation-delay: calc(var(--i, 0) * 30ms);
-}
-/* The scene: the playground, catching a mistake and fixing it. */
-.scene {
-  margin: 0;
-  border-radius: 14px;
-  background: var(--sheet);
-  border: 1px solid var(--rule);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-.scene-head {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-  color: var(--muted);
-}
-.scene-code {
-  padding: 16px 0 18px;
-  font: 14.5px/1.75 var(--mono);
-  min-height: 290px;
-}
-.ln {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  white-space: pre;
-}
-.ln .n {
-  color: var(--faint);
-  text-align: right;
-  padding-right: 18px;
-}
-.k {
-  color: var(--c-keyword);
-}
-.d {
-  color: var(--c-number);
-}
-/* The pin number: three values in one slot, swapped by the animation. */
-.pin {
-  display: inline-grid;
-  color: var(--c-number);
-}
-/* All three values share one cell, so they swap in place. */
-.v {
-  grid-area: 1 / 1;
-}
-.v6,
-.v4 {
-  opacity: 0;
-}
-.scene-error {
-  margin: 0 18px 0 44px;
-  padding: 0 12px;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  border-left: 2px solid var(--fault);
-  background: color-mix(in srgb, var(--fault) 8%, var(--sheet));
-  border-radius: 0 6px 6px 0;
-  font: 13px/1.45 var(--sans);
-  white-space: normal;
-}
-.scene-error p {
-  padding-top: 8px;
-}
-.scene-fixes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px 0 10px;
-}
-.fix {
-  padding: 2px 9px;
-  border-radius: 5px;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-  font-size: 12px;
-  background: var(--sheet);
-}
-/* Labels that point up at the pin number (column 16 of line 2). */
-.scene-notes {
-  position: relative;
-  height: 0;
-  margin-left: 44px;
-}
-.scene-label,
-.scene-done {
+.ls-next {
   position: absolute;
-  top: 6px;
-  left: calc(15.5ch - 12px);
-  padding: 3px 9px 4px;
+  top: 14px;
+  left: 14px;
+  padding: 2px 8px;
   border-radius: 6px;
-  white-space: nowrap;
-  opacity: 0;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-}
-.scene-label {
-  background: var(--signal);
-}
-.scene-done {
-  background: var(--pass);
-}
-.scene-label::before,
-.scene-done::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: 8px;
-  width: 8px;
-  height: 8px;
-  background: inherit;
-  transform: rotate(45deg);
-  border-radius: 1px;
-}
-.scene-label span,
-.scene-done span {
-  position: relative;
-  font: 500 13px var(--sans);
-  color: #fff;
+  background: var(--sheet);
+  color: var(--tint);
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
 }
 @media (prefers-color-scheme: dark) {
-  .scene-label span,
-  .scene-done span {
-    color: #06121c;
+  .ls-tile {
+    --tint: hsl(var(--hue) 65% 64%);
   }
 }
-.scene-status {
+
+/* Playground and Learn Volt: the app's two views. */
+.modes {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-top: 1px solid var(--rule);
-  font-size: 13px;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.mode {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 7px;
   color: var(--muted);
+  font-size: 13px;
+  transition: background 160ms ease, color 160ms ease;
 }
-.scene-status .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--pass);
+.mode:hover {
+  color: var(--ink);
 }
-.s-err {
-  display: none;
-}
-.replay {
-  margin-left: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: var(--signal);
-  cursor: pointer;
+.mode[aria-current='page'] {
+  color: var(--ink);
+  background: var(--sheet);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
 }
 
-/* One 6-second scene. Every part runs on the same timeline:
-   0.9s 2→6, 1.1s the error, 2.1s the label, 3.5s the fix is pressed,
-   3.85s 6→4 and the error clears, 4.2s the confirmation. */
-.lh-play .v2 { animation: v2 6s var(--ease) forwards; }
-.lh-play .v6 { animation: v6 6s var(--ease) forwards; }
-.lh-play .v4 { animation: v4 6s var(--ease) forwards; }
-.lh-play .pin { animation: underline 6s linear forwards; }
-.lh-play .scene-error { animation: error 6s var(--ease) forwards; }
-.lh-play .scene-notes { animation: notes 6s var(--ease) forwards; }
-.lh-play .scene-label { animation: label 6s var(--ease) forwards; }
-.lh-play .scene-done { animation: done 6s var(--ease) forwards; }
-.lh-play .fix-a { animation: press 6s ease forwards; }
-.lh-play .scene-status .dot { animation: dot 6s linear forwards; }
-.lh-play .s-ok { animation: s-ok 6s linear forwards; }
-.lh-play .s-err { display: inline; animation: s-err 6s linear forwards; }
-
-@keyframes v2 { 0%, 14% { opacity: 1; } 16%, 100% { opacity: 0; } }
-@keyframes v6 { 0%, 14% { opacity: 0; } 16%, 63% { opacity: 1; } 65%, 100% { opacity: 0; } }
-@keyframes v4 { 0%, 63% { opacity: 0; } 65%, 100% { opacity: 1; } }
-@keyframes underline {
-  0%, 17% { text-decoration: none; }
-  18%, 63% { text-decoration: underline wavy var(--fault); text-underline-offset: 4px; }
-  64%, 100% { text-decoration: none; }
+/* The editor's actions don't apply while choosing a course. */
+.is-gallery #examples,
+.is-gallery #format,
+.is-gallery #share {
+  visibility: hidden;
 }
-@keyframes error {
-  0%, 17% { max-height: 0; opacity: 0; margin-bottom: 0; }
-  23%, 62% { max-height: 120px; opacity: 1; margin-bottom: 6px; }
-  68%, 100% { max-height: 0; opacity: 0; margin-bottom: 0; }
-}
-@keyframes notes {
-  0%, 34% { height: 0; }
-  38%, 100% { height: 40px; }
-}
-@keyframes label {
-  0%, 34% { opacity: 0; transform: translateY(-4px) scale(0.96); }
-  38%, 62% { opacity: 1; transform: none; }
-  65%, 100% { opacity: 0; transform: none; }
-}
-@keyframes done {
-  0%, 69% { opacity: 0; transform: translateY(-4px) scale(0.96); }
-  73%, 100% { opacity: 1; transform: none; }
-}
-@keyframes press {
-  0%, 56% { background: var(--sheet); box-shadow: inset 0 0 0 1px var(--line-strong); transform: none; }
-  58% { background: color-mix(in srgb, var(--signal) 18%, var(--sheet)); box-shadow: inset 0 0 0 1px var(--signal); transform: scale(0.95); }
-  61%, 100% { background: color-mix(in srgb, var(--signal) 18%, var(--sheet)); box-shadow: inset 0 0 0 1px var(--signal); transform: none; }
-}
-@keyframes dot { 0%, 17% { background: var(--pass); } 18%, 64% { background: var(--fault); } 65%, 100% { background: var(--pass); } }
-@keyframes s-ok { 0%, 17% { display: inline; } 18%, 64% { display: none; } 65%, 100% { display: inline; } }
-@keyframes s-err { 0%, 17% { display: none; } 18%, 64% { display: inline; } 65%, 100% { display: none; } }
-
-/* With reduced motion, the scene simply shows how it ends. */
-@media (prefers-reduced-motion: reduce) {
-  .scene * {
-    animation: none !important;
-  }
-  .v2,
-  .v6 {
-    opacity: 0;
-  }
-  .v4,
-  .scene-done {
-    opacity: 1;
-  }
-  .scene-notes {
-    height: 40px;
-  }
-  .replay {
-    display: none;
-  }
-}
-

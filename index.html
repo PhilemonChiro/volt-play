@@ -16,7 +16,10 @@
       <a class="mark" href="https://voltembedded.com" title="voltembedded.com">
         <img src="/volt-logo.svg" alt="" width="20" height="17" /><span>Volt</span>
       </a>
-      <span class="place">Playground</span>
+      <nav class="modes" aria-label="View">
+        <button type="button" class="mode" id="go-playground" aria-current="page">Playground</button>
+        <button type="button" class="mode" id="learn" aria-pressed="false">Learn Volt</button>
+      </nav>
 
       <div class="menu" id="examples">
         <button type="button" class="menu-button" aria-haspopup="listbox" aria-expanded="false" aria-controls="example-list">
@@ -25,8 +28,6 @@
         </button>
         <ul class="menu-list" id="example-list" role="listbox" aria-label="Examples" tabindex="-1" hidden></ul>
       </div>
-
-      <button type="button" class="quiet learn" id="learn" aria-pressed="false" aria-controls="lesson">Learn Volt</button>
 
       <div class="top-actions">
         <button type="button" class="quiet" id="format" title="Format (⌘S)">Format</button>
@@ -84,54 +85,13 @@
       </section>
     </main>
 
-    <section class="learn-home" id="learn-home" aria-label="Learn Volt" hidden>
-      <div class="lh-inner">
-        <div class="lh-top">
-          <button type="button" class="quiet" id="lh-close">Back to the editor</button>
-        </div>
-        <div class="lh-hero">
-          <div class="lh-text">
-            <h1>Learn Volt by changing real code.</h1>
-            <p class="lh-lede">Nine short courses, each on one idea. Labels point at the code that matters, you make the change, and the compiler checks it as you type.</p>
-            <div class="lh-actions">
-              <button type="button" class="solid big" id="lh-start">Start the tour</button>
-              <a class="ghost big" href="#lh-courses">See all courses</a>
-            </div>
-            <p class="lh-progress" id="lh-progress" hidden></p>
-          </div>
-        <figure class="scene" id="lh-scene" aria-label="A Volt program catching a pin mistake, then fixing it">
-          <div class="scene-head"><span>main.volt</span><span class="dim">ESP32-DevKitC</span></div>
-          <div class="scene-code" aria-hidden="true">
-            <div class="ln"><span class="n">1</span><span><span class="k">hardware</span> {</span></div>
-            <div class="ln"><span class="n">2</span><span>    <span class="k">pin</span> lamp = <span class="pin"><span class="v v2">2</span><span class="v v6">6</span><span class="v v4">4</span></span></span></div>
-            <div class="scene-notes">
-              <div class="scene-label"><span>wired to the chip that holds your program</span></div>
-              <div class="scene-done"><span>moved to GPIO 4, and checked</span></div>
-            </div>
-            <div class="scene-error">
-              <p>GPIO 6 is connected to the SPI flash chip. Using it will crash the ESP32.</p>
-              <div class="scene-fixes"><span class="fix fix-a">Move to GPIO 4</span><span class="fix">Move to GPIO 18</span><span class="fix">Move to GPIO 19</span></div>
-            </div>
-            <div class="ln"><span class="n">3</span><span>}</span></div>
-            <div class="ln"><span class="n">4</span><span></span></div>
-            <div class="ln"><span class="n">5</span><span><span class="k">every</span> <span class="d">500ms</span> { lamp.toggle() }</span></div>
-          </div>
-          <figcaption class="scene-status">
-            <span class="dot" aria-hidden="true"></span><span class="s-err">1 error</span><span class="s-ok">No problems found</span>
-            <button type="button" class="replay" id="lh-replay">Replay</button>
-          </figcaption>
-        </figure>
-        </div>
-        <ol class="lh-how">
-          <li><h3>The code is explained where it is</h3><p>Labels point at the exact words a step is about, and the rest of the program steps back.</p></li>
-          <li><h3>You make the change</h3><p>Each step asks for one small edit, right under the line it’s about. A hint is there if you want one.</p></li>
-          <li><h3>The compiler checks it</h3><p>The moment your change is right, the step confirms it and tells you why it mattered.</p></li>
-        </ol>
-        <div class="lh-catalog-head">
-          <h2>Courses</h2>
-          <p>In the order we’d suggest. Each one stands on its own.</p>
-        </div>
-        <ol class="lh-courses" id="lh-courses"></ol>
+    <section class="learn-view" id="learn-sheet" aria-labelledby="ls-title" hidden>
+      <div class="lv-inner">
+        <header class="ls-head">
+          <h2 class="ls-title" id="ls-title">Learn Volt</h2>
+          <p class="ls-sub" id="ls-sub"></p>
+        </header>
+        <ol class="ls-grid" id="ls-grid" role="listbox" aria-label="Courses"></ol>
       </div>
     </section>
 

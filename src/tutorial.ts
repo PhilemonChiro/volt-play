@@ -8,6 +8,7 @@ import { spotLines, type Course, type Lesson, type Result } from './lessons';
 import { courses } from './courses';
 import { typeTo, setSpotlight, setNotes, setCallout, type Note } from './editor';
 import { renderTimeline } from './timeline';
+import { illustrations, hues } from './illustrations';
 
 type Panel = 'pins' | 'problems' | 'states';
 type Deps = {
@@ -72,82 +73,78 @@ export function tutorial(d: Deps) {
     d.showFigure(false);
   }
 
-  // ---------- the landing screen ----------
-  const home = $('#learn-home');
-  const scene = $('#lh-scene');
-  const KEY: Record<string, string> = {
-    tour: 'hardware',
-    pins: 'PullUpInput',
-    time: 'every 1s',
-    machines: 'machine',
-    tasks: 'task',
-    devices: 'device',
-    storage: 'storage',
-    channels: 'channel',
-    failures: 'or retry(5)',
-  };
+  // ---------- the course window ----------
+  const sheet = $('#learn-sheet');
+  const grid = $('#ls-grid');
+  const stepsSeen = (id: string) => Number(d.store.get(`volt-play:steps:${id}`)) || 0;
 
-  function playScene() {
-    scene.classList.remove('lh-play');
-    void scene.offsetWidth; // restarts the CSS animations
-    scene.classList.add('lh-play');
-  }
-
-  function showHome() {
+  function showSheet() {
     busy++;
+    // Remembered before it's cleared, so the gallery can offer to continue it.
+    const inProgress = course?.id ?? d.store.get('volt-play:course');
     course = null;
-    d.store.set('volt-play:course', '');
     clearCode();
-    // The lesson column goes; the landing screen covers the editor.
     split.classList.remove('is-learning');
-    setTimeout(() => {
-      if (!course) panel.hidden = true;
-    }, reduced() ? 0 : 460);
+    panel.hidden = true;
     d.setEditable(true);
 
     const finished = done();
-    const nextCourse = courses.find((c) => !finished.has(c.id));
-    const list = $('#lh-courses');
-    list.replaceChildren(
-      ...courses.map((c, i) => {
+    const next = courses.find((c) => !finished.has(c.id)) ?? courses[0];
+    $('#ls-sub').textContent = finished.size
+      ? `${finished.size} of ${courses.length} courses done`
+      : `${courses.length} short courses, each on one idea`;
+    grid.replaceChildren(
+      ...courses.map((c) => {
         const li = el('li');
-        li.style.setProperty('--i', String(i));
-        const b = el('button', 'lh-row');
+        const b = el('button', 'ls-tile');
         b.type = 'button';
-        if (finished.has(c.id)) b.classList.add('is-done');
-        if (c === nextCourse && finished.size) b.classList.add('is-next');
-        const text = el('span', 'lh-text-col');
-        text.append(el('span', 'lh-title', c.title), el('span', 'lh-about', c.about));
-        const go = el('span', 'lh-go');
-        go.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" /></svg>';
-        b.append(
-          el('span', 'lh-num', String(i + 1).padStart(2, '0')),
-          text,
-          el('code', 'lh-key', KEY[c.id] ?? ''),
-          el('span', 'lh-meta', finished.has(c.id) ? 'Done' : `${c.steps.length} steps`),
-          go,
-        );
-        b.addEventListener('click', () => start(c));
+        b.setAttribute('role', 'option');
+        b.setAttribute('aria-selected', String(c === next));
+        const isDone = finished.has(c.id);
+        if (isDone) b.classList.add('is-done');
+        b.style.setProperty('--hue', String(hues[c.id] ?? 205));
+        const art = el('span', 'ls-art');
+        art.innerHTML = illustrations[c.id] ?? '';
+        const body = el('span', 'ls-body');
+        const seen = isDone ? c.steps.length : Math.min(stepsSeen(c.id), c.steps.length);
+        const state = isDone ? 'Done' : seen ? `${seen} of ${c.steps.length} steps` : `${c.steps.length} steps`;
+        body.append(el('span', 'ls-name', c.title), el('span', 'ls-about', c.about), el('span', 'ls-state', state));
+        b.append(art, body);
+        if (c === next && finished.size && c.id !== inProgress) b.append(el('span', 'ls-next', 'Up next'));
+        const resumeAt = c.id === inProgress ? Number(d.store.get('volt-play:lesson')) || 0 : 0;
+        if (resumeAt) b.append(el('span', 'ls-next', 'Continue'));
+        b.addEventListener('click', () => start(c, resumeAt));
         li.append(b);
         return li;
       }),
     );
-    const startBtn = $<HTMLButtonElement>('#lh-start');
-    const target = finished.size && nextCourse ? nextCourse : courses[0];
-    startBtn.textContent = finished.size && nextCourse ? `Continue: ${nextCourse.title}` : 'Start the tour';
-    startBtn.onclick = () => start(target);
-    const progress = $('#lh-progress');
-    progress.hidden = !finished.size;
-    progress.textContent = nextCourse ? `${finished.size} of ${courses.length} courses done.` : `All ${courses.length} courses done.`;
-
-    home.hidden = false;
-    home.scrollTop = 0;
-    playScene();
+    sheet.hidden = false;
+    document.body.classList.add('is-gallery');
+    grid.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus({ preventScroll: true });
   }
+
+  function hideSheet() {
+    sheet.hidden = true;
+    document.body.classList.remove('is-gallery');
+  }
+
+  // Arrow keys move between tiles, in reading order and by row.
+  grid.addEventListener('keydown', (e) => {
+    const tiles = [...grid.querySelectorAll<HTMLButtonElement>('.ls-tile')];
+    const i = tiles.indexOf(document.activeElement as HTMLButtonElement);
+    if (i < 0) return;
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+    const to = { ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + cols, ArrowUp: i - cols }[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    const t = tiles[Math.max(0, Math.min(tiles.length - 1, to))];
+    tiles.forEach((x) => x.setAttribute('aria-selected', String(x === t)));
+    t.focus();
+  });
 
   function start(c: Course, at = 0) {
     course = c;
-    home.hidden = true;
+    hideSheet();
     panel.hidden = false;
     requestAnimationFrame(() => split.classList.add('is-learning'));
     d.store.set('volt-play:course', c.id);
@@ -273,6 +270,7 @@ export function tutorial(d: Deps) {
     const run = ++busy;
     index = Math.max(0, Math.min(i, c.steps.length - 1));
     d.store.set('volt-play:lesson', String(index));
+    d.store.set(`volt-play:steps:${c.id}`, String(Math.max(stepsSeen(c.id), index)));
     const l = c.steps[index];
     met = false;
 
@@ -366,11 +364,11 @@ export function tutorial(d: Deps) {
     // The visitor's own program comes back if they leave part way through.
     d.store.set('volt-play:before-lesson', d.view.state.doc.toString());
     $('#learn').setAttribute('aria-pressed', 'true');
+    $('#learn').setAttribute('aria-current', 'page');
+    $('#go-playground').removeAttribute('aria-current');
     const wanted = courses.find((c) => c.id === courseId);
-    const resume = courses.find((c) => c.id === d.store.get('volt-play:course'));
     if (wanted) start(wanted);
-    else if (resume) start(resume, Number(d.store.get('volt-play:lesson')) || 0);
-    else showHome();
+    else showSheet();
   }
 
   function close(keep = false) {
@@ -378,8 +376,10 @@ export function tutorial(d: Deps) {
     isOpen = false;
     busy++;
     split.classList.remove('is-learning');
-    home.hidden = true;
+    hideSheet();
     $('#learn').setAttribute('aria-pressed', 'false');
+    $('#learn').removeAttribute('aria-current');
+    $('#go-playground').setAttribute('aria-current', 'page');
     d.setEditable(true);
     d.showSide(true);
     clearCode();
@@ -396,15 +396,14 @@ export function tutorial(d: Deps) {
   function finish() {
     if (!course) return;
     markDone(course.id);
-    showHome();
+    showSheet();
   }
 
-  $('#learn').addEventListener('click', () => (isOpen ? close() : open()));
+  $('#learn').addEventListener('click', () => (isOpen ? showSheet() : open()));
   $('#lesson-close').addEventListener('click', () => close());
-  toList.addEventListener('click', showHome);
-  back.addEventListener('click', () => (index === 0 ? showHome() : go(index - 1)));
-  $('#lh-close').addEventListener('click', () => close());
-  $('#lh-replay').addEventListener('click', playScene);
+  toList.addEventListener('click', showSheet);
+  back.addEventListener('click', () => (index === 0 ? showSheet() : go(index - 1)));
+  $('#go-playground').addEventListener('click', () => close());
   next.addEventListener('click', () => (course && index === course.steps.length - 1 ? finish() : go(index + 1)));
   document.addEventListener('keydown', (e) => {
     if (isOpen && !course && e.key === 'Escape') return close();
@@ -430,3 +429,4 @@ export function tutorial(d: Deps) {
 function withCode(text: string): Node[] {
   return text.split('`').map((part, i) => (i % 2 === 0 ? document.createTextNode(part) : el('code', '', part)));
 }
+
