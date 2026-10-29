@@ -210,6 +210,7 @@ export function createEditor(opts: {
         problemField,
         linkedField,
         spotField,
+        coachField,
         editable.of(EditorView.editable.of(true)),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) opts.onChange();
@@ -275,3 +276,112 @@ export function typeTo(view: EditorView, target: string, budget = 1100): Promise
     requestAnimationFrame(step);
   });
 }
+
+// ---------- tutorial coaching in the code ----------
+// Notes point at words in a line with leader lines drawn underneath it; the
+// callout is the tutorial's "your turn" card, placed under the line to change.
+export type Note = { line: number; col: number; len: number; text: string };
+
+class NotesWidget extends WidgetType {
+  constructor(readonly notes: Note[]) {
+    super();
+  }
+  eq(o: NotesWidget) {
+    return JSON.stringify(o.notes) === JSON.stringify(this.notes);
+  }
+  toDOM() {
+    // The rightmost note sits on the top row, so no line crosses a label.
+    const sorted = [...this.notes].sort((a, b) => b.col - a.col);
+    const ROW = 30;
+    const box = document.createElement('div');
+    box.className = 'cm-notes';
+    box.style.height = `${sorted.length * ROW + 6}px`;
+    sorted.forEach((n, row) => {
+      const delay = row * 110;
+      const centre = `calc(${n.col - 1 + n.len / 2}ch)`;
+      // A line from the middle of the word down to its label.
+      const lead = document.createElement('span');
+      lead.className = 'cm-note-lead';
+      lead.style.left = centre;
+      lead.style.height = `${row * ROW + 8}px`;
+      lead.style.animationDelay = `${delay}ms`;
+      // The label, with a caret pointing up at the word.
+      const label = document.createElement('span');
+      label.className = 'cm-note-label';
+      label.style.left = `calc(${n.col - 1 + n.len / 2}ch - 12px)`;
+      label.style.top = `${row * ROW + 8}px`;
+      label.style.animationDelay = `${delay + 80}ms`;
+      // Positioned in the code font's character widths; the words use the UI font.
+      const words = document.createElement('span');
+      words.textContent = n.text;
+      label.append(words);
+      box.append(lead, label);
+    });
+    return box;
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
+class HostWidget extends WidgetType {
+  constructor(readonly el: HTMLElement) {
+    super();
+  }
+  eq(o: HostWidget) {
+    return o.el === this.el;
+  }
+  toDOM() {
+    return this.el;
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
+export const setNotes = StateEffect.define<Note[]>();
+export const setCallout = StateEffect.define<{ line: number; el: HTMLElement } | null>();
+
+const coachField = StateField.define<{ notes: DecorationSet; callout: DecorationSet }>({
+  create: () => ({ notes: Decoration.none, callout: Decoration.none }),
+  update(v, tr) {
+    let { notes, callout } = v;
+    // Notes describe the code as the step typed it; once the visitor edits, they go.
+    if (tr.docChanged && tr.isUserEvent('input') || tr.isUserEvent('delete')) notes = Decoration.none;
+    else notes = notes.map(tr.changes);
+    callout = callout.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(setNotes)) {
+        const byLine = new Map<number, Note[]>();
+        for (const n of e.value) if (n.line >= 1 && n.line <= tr.state.doc.lines) byLine.set(n.line, [...(byLine.get(n.line) ?? []), n]);
+        const ranges = [...byLine].flatMap(([line, ns]) => {
+          const l = tr.state.doc.line(line);
+          return [
+            // Each word pulses as its label arrives (same order as the widget's rows).
+            ...[...ns]
+              .sort((a, b) => b.col - a.col)
+              .map((n, row) =>
+                Decoration.mark({ class: 'cm-noted', attributes: { style: `animation-delay: ${row * 110 + 60}ms` } }).range(
+                  l.from + n.col - 1,
+                  Math.min(l.to, l.from + n.col - 1 + n.len),
+                ),
+              )
+              .sort((x, y) => x.from - y.from),
+            Decoration.widget({ widget: new NotesWidget(ns), block: true, side: 3 }).range(l.to),
+          ];
+        });
+        notes = Decoration.set(ranges, true);
+      }
+      if (e.is(setCallout)) {
+        callout =
+          e.value && e.value.line >= 1 && e.value.line <= tr.state.doc.lines
+            ? Decoration.set([Decoration.widget({ widget: new HostWidget(e.value.el), block: true, side: 4 }).range(tr.state.doc.line(e.value.line).to)])
+            : Decoration.none;
+      }
+    }
+    return { notes, callout };
+  },
+  provide: (f) => [EditorView.decorations.from(f, (v) => v.notes), EditorView.decorations.from(f, (v) => v.callout)],
+});
+
+export const coaching = coachField;

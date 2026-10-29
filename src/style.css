@@ -214,9 +214,22 @@ button,
   min-width: 0;
   overflow: hidden;
 }
+/* A column: header, then whatever is showing, with the editor taking the rest. */
 .pane.code {
   background: var(--sheet);
-  grid-template-rows: 38px auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+}
+.pane.code > .pane-head {
+  flex: 0 0 38px;
+}
+.pane.code > .editor {
+  flex: 1 1 0;
+}
+.pane.code > .intro,
+.pane.code > .timeline,
+.pane.code > .figure {
+  flex: 0 0 auto;
 }
 
 
@@ -760,84 +773,6 @@ tr.is-error .hw-num {
   }
 }
 
-/* A "your turn" step. */
-.try {
-  margin-top: 22px;
-  padding: 14px 16px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--sheet);
-  transition: border-color 300ms ease, background 300ms ease;
-}
-.try-head {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-.try-task {
-  font-size: 14.5px;
-  font-weight: 500;
-}
-.tick {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  fill: none;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.tick circle {
-  stroke: var(--line-strong);
-  transition: stroke 250ms ease, fill 250ms ease;
-}
-.tick path {
-  stroke: #fff;
-  stroke-dasharray: 14;
-  stroke-dashoffset: 14;
-  transition: stroke-dashoffset 360ms var(--ease) 120ms;
-}
-.try.is-met {
-  border-color: color-mix(in srgb, var(--pass) 45%, var(--rule));
-}
-.is-met .tick circle {
-  stroke: var(--pass);
-  fill: var(--pass);
-}
-.is-met .tick path {
-  stroke-dashoffset: 0;
-}
-.try-show {
-  margin: 10px 0 0 22px;
-}
-.is-met .try-show {
-  display: none;
-}
-.try-after {
-  display: grid;
-  grid-template-rows: 0fr;
-  margin-left: 30px;
-  font-size: 14px;
-  line-height: 1.55;
-  opacity: 0;
-  transition: grid-template-rows 420ms var(--ease), opacity 300ms ease 100ms, margin-top 420ms var(--ease);
-}
-.is-met .try-after {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  margin-top: 10px;
-}
-.try-after {
-  overflow: hidden;
-}
-.try-after > span {
-  min-height: 0;
-}
-.next-step {
-  margin-top: 16px;
-  color: var(--muted);
-}
 .finish {
   display: flex;
   flex-wrap: wrap;
@@ -1067,3 +1002,339 @@ tr.is-error .hw-num {
 .courses li:nth-child(7) { animation-delay: 150ms; }
 .courses li:nth-child(8) { animation-delay: 175ms; }
 .courses li:nth-child(9) { animation-delay: 200ms; }
+
+/* ---------- tutorial: in the code ---------- */
+/* Notes: the word is highlighted, and a label points up at it. */
+.cm-notes {
+  position: relative;
+  margin: 0 20px 4px 12px;
+  font: 13.5px var(--mono);
+  pointer-events: none;
+}
+/* The word a label points at is the brightest thing on the line. */
+.cm-noted {
+  color: var(--ink) !important;
+  background: color-mix(in srgb, var(--signal) 26%, transparent);
+  box-shadow: 0 0 0 1px var(--signal);
+  border-radius: 3px;
+  animation: noted 700ms var(--ease) both;
+}
+.cm-noted span {
+  color: inherit !important;
+}
+@keyframes noted {
+  0% {
+    background: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+  35% {
+    background: color-mix(in srgb, var(--signal) 45%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 35%, transparent);
+  }
+}
+.cm-note-lead {
+  position: absolute;
+  top: 0;
+  width: 0;
+  border-left: 1.5px solid var(--signal);
+  transform-origin: top;
+  animation: draw-down 220ms var(--ease) both;
+}
+@keyframes draw-down {
+  from {
+    transform: scaleY(0);
+  }
+}
+.cm-note-label {
+  position: absolute;
+  padding: 3px 9px 4px;
+  border-radius: 6px;
+  background: var(--signal);
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  animation: pop 320ms var(--ease) both;
+}
+/* The caret that points up at the word. */
+.cm-note-label::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--signal);
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+.cm-note-label span {
+  position: relative;
+  font: 500 12.5px var(--sans);
+  color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  .cm-note-label span {
+    color: #06121c;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+}
+/* During a lesson, the editor's own highlights step back. */
+.cm-editor.has-spot .cm-matchingBracket,
+.cm-editor.has-spot .cm-nonmatchingBracket {
+  outline: none;
+  background: none;
+}
+.cm-editor.has-spot .cm-activeLineGutter {
+  color: inherit;
+}
+
+/* The "your turn" card, under the line to change. */
+.callout {
+  margin: 4px 20px 12px 12px;
+  max-width: 560px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--signal) 40%, var(--rule));
+  background: color-mix(in srgb, var(--signal) 6%, var(--sheet));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  font: 13.5px/1.5 var(--sans);
+  white-space: normal;
+  cursor: default;
+  animation: rise 360ms var(--ease) both;
+  transition: border-color 300ms ease, background 300ms ease;
+}
+.callout-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.callout-task {
+  font-weight: 500;
+  color: var(--ink);
+}
+.callout code,
+.turn code {
+  font: 12.5px var(--mono);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.callout-actions {
+  display: flex;
+  gap: 14px;
+  margin: 6px 0 0 30px;
+}
+.callout-link {
+  padding: 0;
+  color: var(--signal);
+  font-size: 13px;
+}
+.callout-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.callout-link[hidden] {
+  display: none;
+}
+.callout-show:not([hidden]) {
+  animation: fade 300ms ease;
+}
+.callout-hint:not([hidden]) {
+  margin: 6px 0 0 30px;
+  color: var(--muted);
+  animation: rise 260ms var(--ease);
+}
+.callout-slip:not(:empty) {
+  margin: 6px 0 0 30px;
+  color: var(--fault);
+  animation: rise 260ms var(--ease);
+}
+.callout-after {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-left: 30px;
+  overflow: hidden;
+  color: var(--muted);
+  opacity: 0;
+  transition: grid-template-rows 420ms var(--ease), opacity 300ms ease 100ms, margin-top 420ms var(--ease);
+}
+.callout-after > span {
+  min-height: 0;
+}
+.callout.is-met {
+  border-color: color-mix(in srgb, var(--pass) 50%, var(--rule));
+  background: color-mix(in srgb, var(--pass) 7%, var(--sheet));
+}
+.callout.is-met .callout-after {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 6px;
+}
+.callout.is-met .callout-actions,
+.callout.is-met .callout-hint {
+  display: none;
+}
+
+/* The column only says where the task is. */
+.turn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--signal);
+  font-weight: 500;
+}
+.turn.is-met {
+  color: var(--pass);
+}
+
+/* Check marks: a ring that fills and draws its tick. */
+.tick {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tick circle {
+  stroke: var(--line-strong);
+  transition: stroke 250ms ease, fill 250ms ease;
+}
+.turn .tick circle,
+.callout .tick circle {
+  stroke: color-mix(in srgb, var(--signal) 55%, var(--line-strong));
+}
+.tick path {
+  stroke: #fff;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  transition: stroke-dashoffset 360ms var(--ease) 120ms;
+}
+.is-met .tick circle {
+  stroke: var(--pass);
+  fill: var(--pass);
+}
+.is-met .tick path {
+  stroke-dashoffset: 0;
+}
+
+/* ---------- timing strip ---------- */
+.timeline {
+  border-top: 1px solid var(--rule);
+  padding: 14px 20px 12px 56px;
+  background: var(--paper);
+  animation: rise 360ms var(--ease) both;
+}
+.timeline[hidden] {
+  display: none;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 5px 0;
+}
+.tl-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+.tl-label code {
+  font: 12.5px var(--mono);
+}
+.tl-label span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-track {
+  width: 100%;
+  height: 24px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.tl-tick {
+  fill: var(--signal);
+  animation: fade 300ms ease both;
+}
+.is-when .tl-tick {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.tl-band {
+  fill: color-mix(in srgb, var(--signal) 55%, transparent);
+}
+.is-strict .tl-tick,
+.is-strict .tl-band {
+  fill: var(--warn);
+}
+.tl-axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0 0 196px;
+  color: var(--faint);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- learning layout ---------- */
+.split.is-learning.no-side {
+  grid-template-columns: var(--lesson) minmax(0, 1fr) 0px 0px;
+}
+.split.no-side .divider,
+.split.no-side .pane.side {
+  visibility: hidden;
+}
+.lesson-foot .quiet {
+  color: var(--muted);
+}
+.course:focus:not(:focus-visible) {
+  outline: none;
+}
+@media (max-width: 1100px) {
+  .lesson {
+    max-height: 46vh;
+  }
+}
+
+/* The state diagram, under the code during a lesson. */
+.figure {
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 12px 20px 14px;
+  max-height: 300px;
+  overflow: auto;
+  animation: rise 360ms var(--ease) both;
+}
+.figure[hidden] {
+  display: none;
+}
+.figure figure {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.figure figcaption {
+  font: 12.5px var(--mono);
+  color: var(--muted);
+}
+.figure svg {
+  display: block;
+  max-height: 260px;
+  max-width: 100% !important;
+  margin: 0 auto;
+}

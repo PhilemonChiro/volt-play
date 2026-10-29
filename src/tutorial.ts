@@ -1,15 +1,22 @@
-// Runs Learn Volt in the column beside the editor: a list of courses, then
-// each course's steps. A step types its program into the editor, spotlights
-// the lines it's about, and for a "your turn" step waits for the compiler to
-// confirm the visitor's change.
+// Runs Learn Volt beside the editor: a list of courses, then each course's
+// steps. A step types its program into the editor, spotlights the lines it's
+// about, and labels the words that matter. A "your turn" step puts its task
+// in a card under the line to change, and waits for the compiler to confirm.
 import type { EditorView } from '@codemirror/view';
-import { spotLines, type Course, type Result } from './lessons';
+import type { StateEffect } from '@codemirror/state';
+import { spotLines, type Course, type Lesson, type Result } from './lessons';
 import { courses } from './courses';
-import { typeTo, setSpotlight } from './editor';
+import { typeTo, setSpotlight, setNotes, setCallout, type Note } from './editor';
+import { renderTimeline } from './timeline';
 
+type Panel = 'pins' | 'problems' | 'states';
 type Deps = {
   view: EditorView;
-  showPanel: (panel: 'pins' | 'problems' | 'states') => void;
+  showPanel: (panel: Panel) => void;
+  // Shows or folds away the results pane while learning.
+  showSide: (on: boolean) => void;
+  // Shows the state diagram under the code.
+  showFigure: (on: boolean) => void;
   setEditable: (on: boolean) => void;
   openExamples: () => void;
   store: { get(k: string): string | null; set(k: string, v: string): void };
@@ -24,6 +31,8 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = '') 
   if (text) e.textContent = text;
   return e;
 };
+const TICK =
+  '<svg class="tick" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" /><path d="M6 10.4 8.7 13 14 7.4" /></svg>';
 
 export function tutorial(d: Deps) {
   const panel = $('#lesson');
@@ -35,12 +44,15 @@ export function tutorial(d: Deps) {
   const next = $<HTMLButtonElement>('#lesson-next');
   const toList = $<HTMLButtonElement>('#lesson-courses');
   const foot = $('#lesson-foot');
+  const strip = $('#timeline');
 
   let course: Course | null = null;
   let index = 0;
   let isOpen = false;
   let met = false;
   let busy = 0;
+  let callout: HTMLElement | null = null;
+  let showMeTimer = 0;
 
   const done = (): Set<string> => {
     try {
@@ -51,12 +63,23 @@ export function tutorial(d: Deps) {
   };
   const markDone = (id: string) => d.store.set('volt-play:done', JSON.stringify([...done(), id]));
 
+  function clearCode() {
+    d.view.dispatch({ effects: [setSpotlight.of([]), setNotes.of([]), setCallout.of(null)] });
+    d.view.dom.classList.remove('is-preview');
+    callout = null;
+    clearTimeout(showMeTimer);
+    strip.hidden = true;
+    d.showFigure(false);
+  }
+
   // ---------- the list of courses ----------
   async function showList(highlight?: string) {
     const run = ++busy;
     course = null;
     d.store.set('volt-play:course', '');
     content.classList.add('is-leaving');
+    clearCode();
+    d.showSide(false);
     await wait(150);
     if (run !== busy) return;
     const finished = done();
@@ -64,26 +87,29 @@ export function tutorial(d: Deps) {
 
     const frag = document.createDocumentFragment();
     frag.append(el('h2', 'lesson-title', 'Learn Volt'));
-    const intro = el('p', 'lesson-text');
-    intro.textContent = finished.size
-      ? `${finished.size} of ${courses.length} done. Each course is a few minutes on one idea.`
-      : 'Short, hands-on courses, each on one idea. Start with the tour, or go straight to what you need.';
-    frag.append(intro);
-
+    frag.append(
+      el(
+        'p',
+        'lesson-text',
+        finished.size
+          ? `${finished.size} of ${courses.length} done. Each course is a few minutes on one idea.`
+          : 'Short, hands-on courses, each on one idea. Start with the tour, or go straight to what you need.',
+      ),
+    );
     const list = el('ol', 'courses');
     for (const c of courses) {
       const li = el('li');
       const b = el('button', 'course');
       b.type = 'button';
-      if (finished.has(c.id)) b.classList.add('is-done');
+      const isDone = finished.has(c.id);
+      if (isDone) b.classList.add('is-done');
       if (c.id === suggested) b.classList.add('is-next');
       const mark = el('span', 'course-mark');
       mark.setAttribute('aria-hidden', 'true');
       const text = el('span', 'course-text');
       text.append(el('span', 'course-title', c.title), el('span', 'course-about', c.about));
-      const meta = el('span', 'course-meta', finished.has(c.id) ? 'Done' : `${c.steps.length} steps`);
-      b.append(mark, text, meta);
-      b.setAttribute('aria-label', `${c.title}. ${c.about} ${finished.has(c.id) ? 'Done.' : `${c.steps.length} steps.`}`);
+      b.append(mark, text, el('span', 'course-meta', isDone ? 'Done' : `${c.steps.length} steps`));
+      b.setAttribute('aria-label', `${c.title}. ${c.about} ${isDone ? 'Done.' : `${c.steps.length} steps.`}`);
       b.addEventListener('click', () => start(c));
       li.append(b);
       list.append(li);
@@ -96,10 +122,7 @@ export function tutorial(d: Deps) {
     bar.style.transform = `scaleX(${finished.size / courses.length})`;
     toList.hidden = true;
     foot.hidden = true;
-    d.view.dispatch({ effects: setSpotlight.of([]) });
-    d.view.dom.classList.remove('is-preview');
     d.setEditable(true);
-    content.querySelector<HTMLButtonElement>('.course.is-next, .course')?.focus({ preventScroll: true });
   }
 
   function start(c: Course, at = 0) {
@@ -111,7 +134,7 @@ export function tutorial(d: Deps) {
   }
 
   // ---------- one step ----------
-  function render(c: Course, i: number) {
+  function renderColumn(c: Course, i: number) {
     const l = c.steps[i];
     const frag = document.createDocumentFragment();
     frag.append(el('h2', 'lesson-title', l.title));
@@ -121,29 +144,12 @@ export function tutorial(d: Deps) {
       frag.append(p);
     }
     if (l.try) {
-      const box = el('div', 'try');
-      box.id = 'lesson-try';
-      const head = el('div', 'try-head');
-      head.innerHTML =
-        '<svg class="tick" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" /><path d="M6 10.4 8.7 13 14 7.4" /></svg>';
-      const task = el('p', 'try-task');
-      task.append(...withCode(l.try.task));
-      head.append(task);
-      const show = el('button', 'quiet try-show', 'Show me');
-      show.type = 'button';
-      show.addEventListener('click', async () => {
-        show.disabled = true;
-        await typeTo(d.view, l.try!.answer(lampPin()), 500);
-      });
-      const slip = el('p', 'try-slip');
-      slip.id = 'lesson-slip';
-      // The inner span keeps the sentence in one piece inside the grid that animates its height.
-      const after = el('p', 'try-after');
-      const afterText = el('span');
-      afterText.append(...withCode(l.try.after));
-      after.append(afterText);
-      box.append(head, show, slip, after);
-      frag.append(box);
+      // The task itself is in the editor; this just says where.
+      const turn = el('p', 'turn');
+      turn.id = 'lesson-turn';
+      turn.innerHTML = TICK;
+      turn.append(el('span', 'turn-text', 'Your turn, in the editor'));
+      frag.append(turn);
     }
     if (l.recap) {
       const list = el('dl', 'recap');
@@ -154,15 +160,10 @@ export function tutorial(d: Deps) {
       }
       frag.append(list);
     }
-    const last = i === c.steps.length - 1;
-    if (last) {
+    if (i === c.steps.length - 1) {
       const nextCourse = courses[courses.indexOf(c) + 1];
       frag.append(
-        el(
-          'p',
-          'lesson-text next-step',
-          'To run it, Volt IDE builds your program and flashes it to an ESP32 over USB, with the same checks as you type.',
-        ),
+        el('p', 'lesson-text next-step', 'To run it, Volt IDE builds your program and flashes it to an ESP32 over USB, with the same checks as you type.'),
       );
       const row = el('div', 'finish');
       if (nextCourse) {
@@ -174,13 +175,74 @@ export function tutorial(d: Deps) {
         });
         row.append(nb);
       }
-      const get = el('a', nextCourse ? 'quiet' : 'solid', 'Get Volt IDE');
-      (get as HTMLAnchorElement).href = 'https://voltembedded.com/#download';
+      const get = el('a', nextCourse ? 'quiet' : 'solid', 'Get Volt IDE') as HTMLAnchorElement;
+      get.href = 'https://voltembedded.com/#download';
       row.append(get);
       frag.append(row);
     }
     content.replaceChildren(frag);
   }
+
+  // The "your turn" card that sits in the code.
+  function buildCallout(l: Lesson): HTMLElement {
+    const t = l.try!;
+    const card = el('div', 'callout');
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'Your turn');
+    const head = el('div', 'callout-head');
+    head.innerHTML = TICK;
+    const task = el('p', 'callout-task');
+    task.append(...withCode(t.task));
+    head.append(task);
+    const row = el('div', 'callout-actions');
+    const hintBtn = el('button', 'callout-link', 'Hint');
+    hintBtn.type = 'button';
+    const show = el('button', 'callout-link callout-show', 'Show me');
+    show.type = 'button';
+    show.hidden = true;
+    row.append(hintBtn, show);
+    const hint = el('p', 'callout-hint');
+    hint.hidden = true;
+    hint.append(...withCode(t.hint));
+    const slip = el('p', 'callout-slip');
+    const after = el('p', 'callout-after');
+    const afterText = el('span');
+    afterText.append(...withCode(t.after));
+    after.append(afterText);
+    hintBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    hintBtn.addEventListener('click', () => {
+      hint.hidden = false;
+      hintBtn.hidden = true;
+      // After a hint, the answer is one more click away.
+      clearTimeout(showMeTimer);
+      showMeTimer = window.setTimeout(() => (show.hidden = false), reduced() ? 0 : 6000);
+    });
+    show.addEventListener('mousedown', (e) => e.preventDefault());
+    show.addEventListener('click', async () => {
+      show.disabled = true;
+      await typeTo(d.view, t.answer(lampPin()), 500);
+    });
+    card.append(head, row, hint, slip, after);
+    return card;
+  }
+
+  function notesFor(l: Lesson, code: string): Note[] {
+    const lines = code.split('\n');
+    return (l.notes ?? []).flatMap((n) => {
+      const i = lines.findIndex((x) => x.includes(n.line));
+      if (i < 0) return [];
+      const col = lines[i].indexOf(n.at);
+      return col < 0 ? [] : [{ line: i + 1, col: col + 1, len: n.at.length, text: n.text }];
+    });
+  }
+
+  function setNext(state: 'skip' | 'ready' | 'plain', label?: string) {
+    next.className = state === 'skip' ? 'quiet' : 'solid';
+    next.classList.toggle('is-ready', state === 'ready');
+    next.textContent = label ?? (state === 'skip' ? 'Skip' : 'Continue');
+  }
+
+  const offerAnswer = () => callout?.querySelector<HTMLElement>('.callout-show')?.removeAttribute('hidden');
 
   async function go(i: number) {
     if (!course) return;
@@ -192,30 +254,47 @@ export function tutorial(d: Deps) {
     met = false;
 
     content.classList.add('is-leaving');
+    clearCode();
     await wait(150);
     if (run !== busy) return;
-    render(c, index);
+    renderColumn(c, index);
     // The tour opens with a welcome that isn't a step of its own.
     const welcome = c.id === 'tour' ? 1 : 0;
     stepLabel.textContent =
       index < welcome ? c.title : `${c.title}, step ${index + 1 - welcome} of ${c.steps.length - welcome}`;
     bar.style.transform = `scaleX(${(index + 1) / c.steps.length})`;
-    back.disabled = false;
     const last = index === c.steps.length - 1;
-    next.textContent = last ? 'Finish' : index === 0 && welcome ? 'Start' : 'Continue';
-    next.disabled = !!l.try;
-    next.classList.remove('is-ready');
+    if (l.try) setNext('skip');
+    else setNext('plain', last ? 'Finish' : index === 0 && welcome ? 'Start' : 'Continue');
     content.classList.remove('is-leaving');
 
-    d.view.dispatch({ effects: setSpotlight.of([]) });
+    // The lesson explains the code itself, so the results pane stays out of the way;
+    // a state diagram, when the step is about one, sits under the code instead.
+    d.showSide(false);
     d.view.dom.classList.toggle('is-preview', !!l.preview);
-    if (l.panel) d.showPanel(l.panel);
     d.setEditable(false);
     const code = l.code(lampPin());
     await typeTo(d.view, code, l.preview ? 0 : 1100);
     if (run !== busy) return;
     d.setEditable(true);
-    d.view.dispatch({ effects: setSpotlight.of(spotLines(code, l.spot)) });
+
+    const notes = notesFor(l, code);
+    // A line with labels on it is always one of the lines the step is about.
+    const spots = [...new Set([...spotLines(code, l.spot), ...notes.map((n) => n.line)])];
+    const effects: StateEffect<unknown>[] = [setSpotlight.of(spots), setNotes.of(notes)];
+    if (l.try) {
+      callout = buildCallout(l);
+      const at = l.try.at ? spotLines(code, [l.try.at])[0] : spots[0];
+      effects.push(setCallout.of({ line: at ?? 1, el: callout }));
+      // If someone hasn't got going after a while, offer the answer too.
+      showMeTimer = window.setTimeout(offerAnswer, 20_000);
+    }
+    d.view.dispatch({ effects });
+    if (l.timeline) {
+      strip.hidden = false;
+      renderTimeline(strip, code);
+    }
+    if (l.panel === 'states') d.showFigure(true);
     if (l.try) d.view.focus();
     else next.focus({ preventScroll: true });
   }
@@ -223,26 +302,28 @@ export function tutorial(d: Deps) {
   // Called after every check, so a "your turn" step notices when it's done.
   function result(r: Result) {
     const l = course?.steps[index];
-    if (!isOpen || !l?.try || met || busy === 0) return;
-    const slip = document.querySelector<HTMLElement>('#lesson-slip');
+    if (!isOpen || !l || busy === 0) return;
+    if (l.timeline && !strip.hidden) renderTimeline(strip, r.source);
+    if (!l.try || met || !callout) return;
+    const slip = callout.querySelector<HTMLElement>('.callout-slip')!;
     if (!l.try.done(r)) {
-      // A typo shouldn't leave someone stuck: point at it.
+      // A typo shouldn't leave someone stuck: point at it, and offer the answer.
       const err = l.try.wantsError ? undefined : r.diags.find((x) => x.severity === 'error');
       const nudge = l.try.nudge?.(r);
-      slip?.replaceChildren(
-        ...(err
-          ? [document.createTextNode(`Not quite yet: there’s an error on line ${err.line}. Its message is in the editor.`)]
-          : nudge
-            ? withCode(nudge)
-            : []),
+      slip.replaceChildren(
+        ...(err ? [document.createTextNode(`Not quite: there’s an error on line ${err.line}.`)] : nudge ? withCode(nudge) : []),
       );
+      if (err || nudge) offerAnswer();
       return;
     }
-    slip?.replaceChildren();
+    slip.replaceChildren();
     met = true;
-    $('#lesson-try')?.classList.add('is-met');
-    next.disabled = false;
-    next.classList.add('is-ready');
+    clearTimeout(showMeTimer);
+    callout.classList.add('is-met');
+    $('#lesson-turn')?.classList.add('is-met');
+    const turnText = document.querySelector('#lesson-turn .turn-text');
+    if (turnText) turnText.textContent = 'Done';
+    setNext('ready', index === (course?.steps.length ?? 0) - 1 ? 'Finish' : 'Continue');
     d.view.dispatch({ effects: setSpotlight.of([]) });
     d.view.dom.classList.add('is-confirmed');
     setTimeout(() => d.view.dom.classList.remove('is-confirmed'), 900);
@@ -278,8 +359,8 @@ export function tutorial(d: Deps) {
     split.classList.remove('is-learning');
     $('#learn').setAttribute('aria-pressed', 'false');
     d.setEditable(true);
-    d.view.dispatch({ effects: setSpotlight.of([]) });
-    d.view.dom.classList.remove('is-preview');
+    d.showSide(true);
+    clearCode();
     setTimeout(() => {
       if (!isOpen) panel.hidden = true;
     }, reduced() ? 0 : 460);
@@ -293,8 +374,7 @@ export function tutorial(d: Deps) {
   function finish() {
     if (!course) return;
     markDone(course.id);
-    const nextCourse = courses[courses.indexOf(course) + 1];
-    showList(nextCourse?.id);
+    showList(courses[courses.indexOf(course) + 1]?.id);
   }
 
   $('#learn').addEventListener('click', () => (isOpen ? close() : open()));
@@ -305,7 +385,7 @@ export function tutorial(d: Deps) {
   document.addEventListener('keydown', (e) => {
     if (!isOpen || !course || (e.target as HTMLElement).closest('.cm-editor, input, textarea')) return;
     if (e.key === 'Escape') close();
-    else if (e.key === 'ArrowRight' && !next.disabled) next.click();
+    else if (e.key === 'ArrowRight') next.click();
     else if (e.key === 'ArrowLeft') back.click();
     else return;
     e.preventDefault();
@@ -323,8 +403,5 @@ export function tutorial(d: Deps) {
 
 // Lesson text marks code with backticks: `every`.
 function withCode(text: string): Node[] {
-  return text.split('`').map((part, i) => {
-    if (i % 2 === 0) return document.createTextNode(part);
-    return el('code', '', part);
-  });
+  return text.split('`').map((part, i) => (i % 2 === 0 ? document.createTextNode(part) : el('code', '', part)));
 }

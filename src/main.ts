@@ -163,7 +163,7 @@ function check() {
 
 
   statesStale = true;
-  if (!$('#panel-states').hidden) drawStates();
+  if (figureOn || !$('#panel-states').hidden) drawStates();
 
   $('#problem-count').textContent = diags.length ? String(diags.length) : '';
   const say = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -210,12 +210,22 @@ function renderProblems(diags: Diagnostic[]) {
 
 // ---------- state machines ----------
 let statesStale = true;
+let figureOn = false;
+function showFigure(on: boolean) {
+  figureOn = on;
+  $('#figure').hidden = !on;
+  if (on) {
+    statesStale = true;
+    drawStates();
+  }
+}
 let mermaid: typeof import('mermaid').default | null = null;
 let drawSeq = 0;
+// Draws into the State machines panel, or under the code during a lesson.
 async function drawStates() {
   if (!compiler || !statesStale) return;
   statesStale = false;
-  const panel = $('#panel-states');
+  const panel = figureOn ? $('#figure') : $('#panel-states');
   const machines = compiler.states(view.state.doc.toString()).machines ?? [];
   if (!machines.length) {
     const p = document.createElement('p');
@@ -366,6 +376,8 @@ divider.addEventListener('dblclick', () => setSplit(60));
 const tutor = tutorial({
   view,
   showPanel: (p) => selectTab($<HTMLButtonElement>(`#tab-${p}`)),
+  showSide: (on) => split.classList.toggle('no-side', !on),
+  showFigure,
   setEditable: (on) => setEditable(view, on),
   openExamples: () => $<HTMLButtonElement>('.menu-button').click(),
   store: saved,

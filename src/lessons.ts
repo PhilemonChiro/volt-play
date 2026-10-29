@@ -17,9 +17,17 @@ export type Lesson = {
   spot?: string[];
   // Shows the program dimmed, as a preview of where the lessons lead.
   preview?: boolean;
+  // Labels drawn under a line, pointing at words in it.
+  notes?: { line: string; at: string; text: string }[];
+  // Draws the program's timers as a strip under the code.
+  timeline?: boolean;
   panel?: 'pins' | 'problems' | 'states';
   try?: {
     task: string;
+    // The line the task card sits under (default: the first spotlit line).
+    at?: string;
+    // A nudge offered before "Show me".
+    hint: string;
     answer: (lamp: number) => string;
     done: (r: Result) => boolean;
     after: string;
@@ -91,6 +99,11 @@ export const tour: Lesson[] = [
       'Volt checks it against the ESP32’s datasheet straight away. The Hardware panel shows what it found.',
     ],
     code: () => hw(2),
+    notes: [
+      { line: 'pin lamp', at: 'pin', text: 'declares a pin' },
+      { line: 'pin lamp', at: 'lamp', text: 'a name you choose' },
+      { line: 'pin lamp', at: '2', text: 'the GPIO it’s wired to' },
+    ],
     spot: ['pin lamp'],
     panel: 'pins',
   },
@@ -101,6 +114,8 @@ export const tour: Lesson[] = [
     spot: ['pin lamp'],
     panel: 'pins',
     try: {
+      at: 'pin lamp',
+      hint: 'On the highlighted line, replace the `2` after the `=`.',
       task: 'Change the `2` to `6`.',
       answer: () => hw(6),
       done: (r) => r.diags.some((d) => d.code === 'pin-blocked'),
@@ -116,6 +131,8 @@ export const tour: Lesson[] = [
     spot: ['pin lamp'],
     panel: 'pins',
     try: {
+      at: 'pin lamp',
+      hint: 'The buttons under the red message are pins Volt has already checked.',
       task: 'Click one of the suggested pins.',
       answer: () => hw(4),
       done: (r) => !errors(r).length && r.pins.some((p) => p.name === 'lamp' && !FLASH.has(p.gpio)),
@@ -129,9 +146,17 @@ export const tour: Lesson[] = [
       'There’s no main loop to write and no `delay()` that freezes everything else.',
     ],
     code: (lamp) => hw(lamp, true) + beat('1s'),
+    notes: [
+      { line: 'every 1s', at: 'every', text: 'runs on a timer' },
+      { line: 'every 1s', at: '1s', text: 'how often' },
+      { line: 'every 1s', at: 'toggle', text: 'what it does each time' },
+    ],
+    timeline: true,
     spot: ['pin heartbeat', 'every 1s'],
     panel: 'pins',
     try: {
+      at: 'every 1s',
+      hint: 'Half of `1s` is `500ms`.',
       task: 'Make the heartbeat twice as fast.',
       answer: (lamp) => hw(lamp, true) + beat('500ms'),
       done: (r) => !errors(r).length && /every\s+(500ms|0\.5s)\s*\{\s*heartbeat/.test(r.source),
@@ -146,6 +171,11 @@ export const tour: Lesson[] = [
       'A `machine` says that directly. The lamp is in one state at a time, `dark` or `lit`, and `on` and `after` move it between them.',
     ],
     code: (lamp) => hw(lamp, true, true) + beat('500ms') + machine('5s'),
+    notes: [
+      { line: 'on button', at: 'on', text: 'when this happens' },
+      { line: 'on button', at: '-> lit', text: 'go to this state' },
+      { line: 'after 5s', at: 'after', text: 'when this much time has passed' },
+    ],
     spot: ['pin button', 'machine light', 'on button', 'after 5s'],
     panel: 'states',
   },
@@ -156,6 +186,8 @@ export const tour: Lesson[] = [
     spot: ['after 5s'],
     panel: 'states',
     try: {
+      at: 'after 5s',
+      hint: 'Change the `5s` on the highlighted line.',
       task: 'Keep the lamp on for 10 seconds instead of 5.',
       answer: (lamp) => hw(lamp, true, true) + beat('500ms') + machine('10s'),
       done: (r) => !errors(r).length && /after\s+(10s|10000ms)\s*->\s*dark/.test(r.source),
@@ -170,9 +202,14 @@ export const tour: Lesson[] = [
       'Read the note Volt has added beside it.',
     ],
     code: (lamp) => withStorage(lamp, false),
+    notes: [
+      { line: 'storage presses', at: 'storage', text: 'kept in flash, not memory' },
+    ],
     spot: ['storage presses', 'presses += 1'],
     panel: 'pins',
     try: {
+      at: 'presses += 1',
+      hint: 'Put the cursor at the end of `presses += 1`, press Return, then type the line.',
       task: 'Do what the note says: on a new line after `presses += 1`, add `storage.save("presses", presses)`.',
       answer: (lamp) => withStorage(lamp, true),
       done: (r) =>

@@ -36,6 +36,11 @@ const pins: Lesson[] = [
       'Volt checks each mode against what that pin can physically do.',
     ],
     code: fixed(pinsProgram(18)),
+    notes: [
+      { line: 'pin button', at: 'PullUpInput', text: 'reads a button' },
+      { line: 'pin dial', at: 'Analog', text: 'measures a voltage' },
+      { line: 'pin buzzer', at: 'PWM', text: 'pulses an output' },
+    ],
     spot: ['pin led', 'pin button', 'pin dial', 'pin buzzer'],
     panel: 'pins',
   },
@@ -46,6 +51,8 @@ const pins: Lesson[] = [
     spot: ['pin buzzer'],
     panel: 'pins',
     try: {
+      at: 'pin buzzer',
+      hint: 'Change the number after `PWM =`.',
       task: 'Move the buzzer to GPIO `35`.',
       answer: fixed(pinsProgram(35)),
       done: (r) => r.diags.some((d) => d.code === 'pin-input-only' || /input-only/.test(d.message)),
@@ -60,6 +67,8 @@ const pins: Lesson[] = [
     spot: ['pin buzzer'],
     panel: 'pins',
     try: {
+      at: 'pin buzzer',
+      hint: 'The buttons under the red message are pins that can drive PWM.',
       task: 'Click one of the suggested pins.',
       answer: fixed(pinsProgram(4)),
       done: (r) => clean(r) && r.pins.some((p) => p.name === 'buzzer' && !INPUT_ONLY.has(p.gpio)),
@@ -119,8 +128,9 @@ const time: Lesson[] = [
       'There’s no loop to write, and neither block waits for the other.',
     ],
     code: fixed(timeProgram('1s')),
+    timeline: true,
     spot: ['every 1s', 'every 200ms'],
-    panel: 'pins',
+
   },
   {
     title: 'Time has a unit',
@@ -128,6 +138,8 @@ const time: Lesson[] = [
     code: fixed(timeProgram('1s')),
     spot: ['every 1s'],
     try: {
+      at: 'every 1s',
+      hint: 'Put the cursor just after `1s` and press Backspace.',
       task: 'Delete the `s` from `1s`.',
       answer: fixed(timeProgram('1')),
       done: (r) => said(r, /must be a duration/),
@@ -141,6 +153,8 @@ const time: Lesson[] = [
     code: fixed(timeProgram('1')),
     spot: ['every 1 '],
     try: {
+      at: 'every 1 ',
+      hint: 'Type `s` straight after the `1`, or try `250ms`.',
       task: 'Give the interval a unit again.',
       answer: fixed(timeProgram('1s')),
       done: (r) => clean(r) && /every\s+\d+(\.\d+)?(us|ms|s|sec|second|seconds|min|hour)\s*\{\s*led/.test(r.source),
@@ -154,6 +168,10 @@ const time: Lesson[] = [
       'It’s how you tie a timer to the state of things, without an `if` wrapped around the whole block.',
     ],
     code: fixed(timeWhen),
+    notes: [
+      { line: 'every 1s when armed', at: 'when', text: 'skips runs while this is false' },
+    ],
+    timeline: true,
     spot: ['var armed', 'every 1s when armed'],
   },
   {
@@ -163,6 +181,10 @@ const time: Lesson[] = [
       'Keep a strict block short: no Wi-Fi and no waiting. Volt reports it if you try.',
     ],
     code: fixed(timeStrict),
+    notes: [
+      { line: 'every 1ms strict', at: 'strict', text: 'runs from a hardware timer' },
+    ],
+    timeline: true,
     spot: ['every 1ms strict'],
   },
 ];
@@ -228,6 +250,10 @@ const machines: Lesson[] = [
       '`enter` runs as a state begins. `on` moves when something happens, `after` when time passes.',
     ],
     code: fixed(door()),
+    notes: [
+      { line: 'initial state locked', at: 'initial', text: 'where it starts' },
+      { line: 'enter { relay.off() }', at: 'enter', text: 'runs as the state begins' },
+    ],
     spot: ['machine door', 'on button', 'after 10s'],
     panel: 'states',
   },
@@ -240,6 +266,8 @@ const machines: Lesson[] = [
     spot: ['state alarm', '-> unlocked'],
     panel: 'states',
     try: {
+      at: '-> unlocked',
+      hint: 'Put the cursor at the end of the highlighted `on button` line, press Return, and type it.',
       task: 'In `locked`, on a new line after the button line, add `on failures >= 3 -> alarm`.',
       answer: fixed(door(alarmState, '\n        on failures >= 3 -> alarm')),
       done: (r) => clean(r) && !said(r, /unreachable/) && /on\s+failures\s*>=\s*3\s*->\s*alarm/.test(r.source),
@@ -253,6 +281,10 @@ const machines: Lesson[] = [
       'A block after a transition is an action that runs as it’s taken. Here, leaving the alarm resets the count.',
     ],
     code: fixed(guarded),
+    notes: [
+      { line: '[failures < 3]', at: '[failures < 3]', text: 'a guard: only while true' },
+      { line: 'failures = 0', at: '{ failures = 0 }', text: 'an action as it leaves' },
+    ],
     spot: ['[failures < 3]', 'exit {', 'failures = 0'],
     panel: 'states',
   },
@@ -299,6 +331,9 @@ const tasks: Lesson[] = [
       'This one counts button presses by watching for the moment the pin goes low.',
     ],
     code: fixed(buttonsTask(false)),
+    notes: [
+      { line: 'var last', at: 'var last', text: 'belongs to this task alone' },
+    ],
     spot: ['task buttons', 'var last'],
   },
   {
@@ -307,6 +342,8 @@ const tasks: Lesson[] = [
     code: fixed(buttonsTask(false)),
     spot: ['task buttons'],
     try: {
+      at: 'last = now',
+      hint: 'Put it after the `}` that closes the 20ms block, still inside the task.',
       task: 'Inside the task, add `every 5s { log("buttons", "presses={presses}") }`.',
       answer: fixed(buttonsTask(true)),
       done: (r) => clean(r) && /every\s+5s\s*\{\s*log\(/.test(r.source),
@@ -354,6 +391,10 @@ const devices: Lesson[] = [
       'The Hardware panel shows what it chose: a BME280 on I2C at address 0x76.',
     ],
     code: fixed(sensor()),
+    notes: [
+      { line: 'device env', at: 'device', text: 'a part from the library' },
+      { line: 'device env', at: 'BME280', text: 'which part' },
+    ],
     spot: ['device env', 'env.temperature'],
     panel: 'pins',
   },
@@ -363,6 +404,8 @@ const devices: Lesson[] = [
     code: fixed(sensor()),
     spot: ['env.temperature'],
     try: {
+      at: 'env.temperature',
+      hint: 'Put the cursor at the end of the `env.temperature()` line, press Return, and type it.',
       task: 'On the next line, add `let h: float = env.humidity()`.',
       answer: fixed(sensor('\n    let h: float = env.humidity()')),
       done: (r) => clean(r) && /env\.humidity\(\)/.test(r.source),
@@ -397,6 +440,9 @@ const storage: Lesson[] = [
       '`setup` runs once at boot, which makes it the right place to count.',
     ],
     code: fixed(boots(true)),
+    notes: [
+      { line: 'storage.save', at: 'storage.save', text: 'writes it to flash' },
+    ],
     spot: ['storage boots', 'storage.save'],
   },
   {
@@ -405,6 +451,8 @@ const storage: Lesson[] = [
     code: fixed(boots(true)),
     spot: ['storage.save'],
     try: {
+      at: 'storage.save',
+      hint: 'Select the whole `storage.save` line and delete it.',
       task: 'Delete the `storage.save` line.',
       answer: fixed(boots(false)),
       done: (r) => said(r, /never saved/),
@@ -418,6 +466,8 @@ const storage: Lesson[] = [
     code: fixed(boots(false)),
     spot: ['boots += 1'],
     try: {
+      at: 'boots += 1',
+      hint: 'Put the cursor at the end of `boots += 1`, press Return, and type it.',
       task: 'After `boots += 1`, add `storage.save("boots", boots)`.',
       answer: fixed(boots(true)),
       done: (r) => clean(r) && !said(r, /never saved/) && /storage\.save\(\s*"boots"/.test(r.source),
@@ -449,6 +499,11 @@ const channels: Lesson[] = [
       'One block sends, a task receives. Volt handles the locking, so neither side sees a half-written value.',
     ],
     code: fixed(channel('100ms')),
+    notes: [
+      { line: 'channel events', at: 'int[8]', text: 'up to eight ints wait here' },
+      { line: 'events.send', at: 'send', text: 'puts a value in' },
+      { line: 'events.receive', at: 'receive', text: 'takes one out' },
+    ],
     spot: ['channel events', 'events.send', 'events.receive'],
   },
   {
@@ -457,6 +512,8 @@ const channels: Lesson[] = [
     code: fixed(channel('100ms')),
     spot: ['every 100ms'],
     try: {
+      at: 'every 100ms',
+      hint: 'Change `100ms` on the highlighted line.',
       task: 'Make the consumer check every `10ms`.',
       answer: fixed(channel('10ms')),
       done: (r) => clean(r) && /task consumer\s*\{\s*every\s+10ms/.test(r.source),
@@ -491,6 +548,9 @@ const failures: Lesson[] = [
       'The plan sits next to the call, not in error codes checked three lines later.',
     ],
     code: fixed(net(5)),
+    notes: [
+      { line: 'wifi.connect', at: 'or retry(5)', text: 'try again, up to five times' },
+    ],
     spot: ['wifi.connect', 'mqtt.connect'],
   },
   {
@@ -501,6 +561,8 @@ const failures: Lesson[] = [
     code: fixed(net(5)),
     spot: ['try {', '} or skip'],
     try: {
+      at: 'wifi.connect',
+      hint: 'Change the number inside `retry( )` on the Wi-Fi line.',
       task: 'Let the Wi-Fi retry `10` times instead of 5.',
       answer: fixed(net(10)),
       done: (r) => clean(r) && /wifi\.connect\([^)]*\)\s*or\s+retry\(\s*10\s*\)/.test(r.source),
