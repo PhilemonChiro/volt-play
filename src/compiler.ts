@@ -1,6 +1,8 @@
 // Loads the Volt compiler (public/volt.wasm, built by scripts/build-wasm.sh)
-// and exposes its functions with types. Each call runs synchronously and
-// returns in a few milliseconds.
+// and exposes its functions with types. Each call is synchronous and takes a
+// few milliseconds.
+
+export type Fix = { title: string; line: number; col: number; end_line: number; end_col: number; text: string };
 
 export type Diagnostic = {
   line: number;
@@ -8,15 +10,20 @@ export type Diagnostic = {
   end_line?: number;
   end_col?: number;
   message: string;
-  severity: 'error' | 'warning' | string;
+  severity: string;
   hint: string;
   code?: string;
+  fixes?: Fix[];
 };
+
+export type Pin = { name: string; mode: string; gpio: number };
+export type Device = { name: string; type: string; bus: string; address: number };
 
 export type Compiled = {
   diagnostics: Diagnostic[] | null;
   c_code: string;
-  chip: string;
+  pins: Pin[] | null;
+  devices: Device[] | null;
   error?: string;
 };
 
@@ -31,8 +38,8 @@ declare global {
   }
 }
 
-async function loadScript(src: string) {
-  await new Promise<void>((ok, fail) => {
+function loadScript(src: string) {
+  return new Promise<void>((ok, fail) => {
     const s = document.createElement('script');
     s.src = src;
     s.onload = () => ok();
@@ -53,3 +60,5 @@ export async function loadCompiler() {
     states: (src: string) => call<States>('states', src),
   };
 }
+
+export type Compiler = Awaited<ReturnType<typeof loadCompiler>>;

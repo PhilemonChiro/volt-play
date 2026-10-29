@@ -4,43 +4,67 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Volt Playground</title>
-    <meta name="description" content="Write Volt in your browser. Every pin is checked against the ESP32 datasheet as you type, and you can read the C it generates." />
+    <meta name="description" content="Write Volt in your browser. Every pin is checked against the ESP32 as you type, with the generated C and state machine diagrams alongside." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500&family=Chivo:wght@400;500;700&family=Michroma&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500&family=Chivo:wght@400;500;600&family=Michroma&display=swap" rel="stylesheet" />
+    <link rel="preload" href="/volt.wasm" as="fetch" type="application/wasm" crossorigin />
   </head>
   <body>
-    <header class="bar">
-      <a class="brand" href="https://voltembedded.com"><img src="/volt-logo.svg" alt="" width="22" height="19" />Volt</a>
-      <span class="title">Playground</span>
-      <div class="actions">
-        <label class="visually-hidden" for="example">Example</label>
-        <select id="example"></select>
-        <button type="button" id="format">Format</button>
-        <button type="button" id="share">Copy link</button>
-        <a class="cta" href="https://voltembedded.com/#download">Download the IDE</a>
+    <header class="top">
+      <a class="mark" href="https://voltembedded.com" title="voltembedded.com">
+        <img src="/volt-logo.svg" alt="" width="20" height="17" /><span>Volt</span>
+      </a>
+      <span class="place">Playground</span>
+
+      <div class="menu" id="examples">
+        <button type="button" class="menu-button" aria-haspopup="listbox" aria-expanded="false" aria-controls="example-list">
+          Examples
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>
+        </button>
+        <ul class="menu-list" id="example-list" role="listbox" aria-label="Examples" tabindex="-1" hidden></ul>
+      </div>
+
+      <div class="top-actions">
+        <button type="button" class="quiet" id="format" title="Format (⌘S)">Format</button>
+        <button type="button" class="quiet" id="share">Share</button>
+        <a class="solid" href="https://voltembedded.com/#download">Get Volt IDE</a>
       </div>
     </header>
 
-    <main class="work">
-      <section class="editor" aria-label="Program">
-        <div id="editor"></div>
+    <main class="split" id="split">
+      <section class="pane code" aria-label="Program">
+        <div class="pane-head">
+          <span>main.volt</span>
+          <span class="dim">ESP32-DevKitC</span>
+        </div>
+        <div class="editor" id="editor"></div>
       </section>
 
-      <section class="output" aria-label="Results">
-        <div class="tabs" role="tablist">
-          <button role="tab" id="tab-problems" aria-controls="panel-problems" aria-selected="true">Problems</button>
-          <button role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false">Generated C</button>
-          <button role="tab" id="tab-states" aria-controls="panel-states" aria-selected="false">State machines</button>
+      <div class="divider" id="divider" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+
+      <section class="pane side" aria-label="Results">
+        <div class="tabs" role="tablist" aria-label="Results">
+          <button role="tab" id="tab-pins" aria-controls="panel-pins" aria-selected="true">Hardware</button>
+          <button role="tab" id="tab-problems" aria-controls="panel-problems" aria-selected="false" tabindex="-1">Problems<span class="count" id="problem-count"></span></button>
+          <button role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false" tabindex="-1">C</button>
+          <button role="tab" id="tab-states" aria-controls="panel-states" aria-selected="false" tabindex="-1">State machines</button>
         </div>
-        <div class="panel" id="panel-problems" role="tabpanel" aria-labelledby="tab-problems"></div>
-        <div class="panel" id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden><pre><code></code></pre></div>
+        <div class="panel" id="panel-pins" role="tabpanel" aria-labelledby="tab-pins"></div>
+        <div class="panel" id="panel-problems" role="tabpanel" aria-labelledby="tab-problems" hidden></div>
+        <div class="panel panel-c" id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+          <button type="button" class="quiet copy-c" id="copy-c">Copy</button>
+          <div id="c-view"></div>
+        </div>
         <div class="panel" id="panel-states" role="tabpanel" aria-labelledby="tab-states" hidden></div>
       </section>
     </main>
 
-    <footer class="status" aria-live="polite"><span id="status">Loading the compiler…</span></footer>
+    <footer class="status">
+      <span class="state" id="state" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="state-text">Loading the compiler</span></span>
+      <span class="dim" id="timing"></span>
+    </footer>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

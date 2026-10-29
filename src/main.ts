@@ -1,40 +1,36 @@
 import './style.css';
 import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { indentUnit, bracketMatching } from '@codemirror/language';
-import { searchKeymap } from '@codemirror/search';
-import { setDiagnostics, lintGutter, type Diagnostic as CmDiagnostic } from '@codemirror/lint';
-import { voltLanguage } from './language';
-import { loadCompiler, type Diagnostic } from './compiler';
+import { EditorView, lineNumbers } from '@codemirror/view';
+import { cpp } from '@codemirror/lang-cpp';
+import { loadCompiler, type Compiler, type Diagnostic } from './compiler';
+import { createEditor, replaceDoc, jumpTo, setProblems, setLinkedLine } from './editor';
+import { highlight } from './language';
+import { renderHardware, markRow, type PinState, type DeviceState } from './pinout';
+import { examplesMenu } from './menu';
 import { examples } from './examples';
 
-const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-const status = $('#status');
-const problems = $('#panel-problems');
-const cCode = $('#panel-c code');
-const statesPanel = $('#panel-states');
+const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 
-// The program comes from a shared link, else the visitor's last session,
-// else the first example.
-const STORE = 'volt-play-source';
-function stored(): string | null {
-  try {
-    return localStorage.getItem(STORE);
-  } catch {
-    return null;
-  }
-}
-function store(src: string) {
-  try {
-    localStorage.setItem(STORE, src);
-  } catch {
-    // Private windows can refuse storage; the program just isn't remembered.
-  }
-}
+// Small wrappers so a browser that refuses storage still works.
+const saved = {
+  get(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Nothing to do: the setting just isn't remembered.
+    }
+  },
+};
 
-// Shared links carry the program in the URL fragment, deflated and base64url
-// encoded, so nothing is stored on a server.
+// Shared links carry the program in the URL fragment, deflated and
+// base64url-encoded, so nothing is stored on a server.
 async function encode(src: string): Promise<string> {
   const stream = new Blob([src]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
@@ -48,141 +44,174 @@ async function decode(code: string): Promise<string> {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Response(stream).text();
 }
-async function initialSource(): Promise<string> {
+
+let linkNotice = '';
+async function firstProgram(): Promise<string> {
   const m = location.hash.match(/^#code=(.+)$/);
   if (m) {
     try {
       return await decode(m[1]);
     } catch {
-      status.textContent = "That link's program couldn't be read, so an example is open instead.";
+      linkNotice = "The shared link was damaged, so the Blink example is open instead.";
+      return examples[0].source;
     }
   }
-  return stored() ?? examples[0].source;
+  return saved.get('volt-play:source') ?? examples[0].source;
 }
 
-const view = new EditorView({
+// ---------- status bar ----------
+const stateEl = $('#state');
+const stateText = $('#state-text');
+const timing = $('#timing');
+function setStatus(kind: 'loading' | 'ok' | 'warning' | 'error', text: string, ms?: number) {
+  stateEl.dataset.kind = kind;
+  stateText.textContent = text;
+  timing.textContent = ms === undefined ? '' : `Checked in ${ms} ms`;
+}
+
+// ---------- editor ----------
+let compiler: Compiler | null = null;
+let timer = 0;
+let linkedLines = new Set<number>();
+
+const view = createEditor({
   parent: $('#editor'),
+  doc: await firstProgram(),
+  onChange() {
+    clearTimeout(timer);
+    timer = window.setTimeout(check, 120);
+  },
+  onCursorLine(line) {
+    markRow($('#panel-pins'), linkedLines.has(line) ? line : null);
+  },
+  onFormat: format,
+});
+
+// ---------- tabs ----------
+const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+function selectTab(tab: HTMLButtonElement, focus = false) {
+  for (const t of tabs) {
+    const on = t === tab;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    $(`#${t.getAttribute('aria-controls')}`).hidden = !on;
+  }
+  if (focus) tab.focus();
+  saved.set('volt-play:tab', tab.id);
+  if (tab.id === 'tab-states') drawStates();
+}
+tabs.forEach((tab, i) => {
+  tab.addEventListener('click', () => selectTab(tab));
+  tab.addEventListener('keydown', (e) => {
+    const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    selectTab(tabs[(next + tabs.length) % tabs.length], true);
+  });
+});
+const savedTab = tabs.find((t) => t.id === saved.get('volt-play:tab'));
+if (savedTab) selectTab(savedTab);
+
+// ---------- generated C (read-only) ----------
+const cView = new EditorView({
+  parent: $('#c-view'),
   state: EditorState.create({
-    doc: await initialSource(),
-    extensions: [
-      lineNumbers(),
-      lintGutter(),
-      history(),
-      drawSelection(),
-      highlightActiveLine(),
-      bracketMatching(),
-      indentUnit.of('    '),
-      keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-      voltLanguage,
-      EditorView.updateListener.of((u) => {
-        if (u.docChanged) schedule();
-      }),
-    ],
+    doc: '',
+    extensions: [lineNumbers(), cpp(), highlight, EditorState.readOnly.of(true), EditorView.editable.of(false)],
   }),
 });
-
-// Examples.
-const picker = $<HTMLSelectElement>('#example');
-picker.append(new Option('Open an example…', ''));
-for (const ex of examples) picker.append(new Option(ex.name, ex.id));
-picker.addEventListener('change', () => {
-  const ex = examples.find((e) => e.id === picker.value);
-  if (ex) setSource(ex.source);
-  picker.value = '';
+let cText = '';
+function showC(text: string) {
+  if (text === cText) return;
+  cText = text;
+  cView.dispatch({ changes: { from: 0, to: cView.state.doc.length, insert: text } });
+}
+const copyC = $<HTMLButtonElement>('#copy-c');
+copyC.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(cText);
+    copyC.textContent = 'Copied';
+  } catch {
+    copyC.textContent = 'Select the code to copy it';
+  }
+  setTimeout(() => (copyC.textContent = 'Copy'), 1600);
 });
 
-function setSource(src: string) {
-  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: src } });
-  view.focus();
-}
-
-// Tabs.
-const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-for (const tab of tabs) {
-  tab.addEventListener('click', () => {
-    for (const t of tabs) {
-      const on = t === tab;
-      t.setAttribute('aria-selected', String(on));
-      $(`#${t.getAttribute('aria-controls')}`).hidden = !on;
-    }
-    if (tab.id === 'tab-states') renderStates();
+// ---------- checking ----------
+// The line declaring each pin or device, by name.
+function declLines(src: string, keyword: 'pin' | 'device'): Map<string, number> {
+  const lines = new Map<string, number>();
+  const re = new RegExp(`^\\s*${keyword}\\s+([A-Za-z_]\\w*)`);
+  src.split('\n').forEach((text, i) => {
+    const m = text.match(re);
+    if (m && !lines.has(m[1])) lines.set(m[1], i + 1);
   });
+  return lines;
 }
 
-const compiler = await loadCompiler().catch((e: Error) => {
-  status.textContent = `The compiler didn't load: ${e.message}. Reload the page to try again.`;
-  throw e;
-});
-
-// Compile shortly after typing stops; a compile takes a few milliseconds.
-let timer = 0;
-function schedule() {
-  clearTimeout(timer);
-  timer = window.setTimeout(run, 150);
-}
-
-function offset(line: number, col: number): number {
-  const doc = view.state.doc;
-  const l = doc.line(Math.min(Math.max(line, 1), doc.lines));
-  return Math.min(l.from + Math.max(col - 1, 0), l.to);
-}
-
-function run() {
+function check() {
+  if (!compiler) return;
   const src = view.state.doc.toString();
-  store(src);
+  saved.set('volt-play:source', src);
   const t0 = performance.now();
   const res = compiler.compile(src);
   const ms = Math.max(1, Math.round(performance.now() - t0));
   if (res.error) {
-    status.textContent = `The compiler stopped: ${res.error}`;
+    setStatus('error', `The compiler stopped on this program: ${res.error}`);
     return;
   }
-  const diags: Diagnostic[] = res.diagnostics ?? [];
+  const diags = res.diagnostics ?? [];
   const errors = diags.filter((d) => d.severity === 'error').length;
   const warnings = diags.length - errors;
 
-  view.dispatch(
-    setDiagnostics(
-      view.state,
-      diags.map((d): CmDiagnostic => {
-        const from = offset(d.line, d.col);
-        const to = d.end_line ? offset(d.end_line, d.end_col ?? d.col) : view.state.doc.line(Math.min(d.line, view.state.doc.lines)).to;
-        return {
-          from,
-          to: Math.max(to, from),
-          severity: d.severity === 'error' ? 'error' : 'warning',
-          message: d.hint ? `${d.message}\n${d.hint}` : d.message,
-        };
-      }),
-    ),
-  );
-
+  view.dispatch({ effects: setProblems.of(diags) });
   renderProblems(diags);
-  cCode.textContent = errors ? '// Fix the problems to see the C Volt generates.' : res.c_code;
-  statesDirty = true;
-  if (!statesPanel.hidden) renderStates();
 
-  const parts = [errors ? `${errors} ${errors === 1 ? 'error' : 'errors'}` : 'No errors'];
-  if (warnings) parts.push(`${warnings} ${warnings === 1 ? 'warning' : 'warnings'}`);
-  status.textContent = `${parts.join(', ')}. Checked against the ESP32 in ${ms} ms.`;
-  $('#tab-problems').textContent = diags.length ? `Problems (${diags.length})` : 'Problems';
+  const at = (line: number) => diags.filter((d) => d.line === line);
+  const pinDecl = declLines(src, 'pin');
+  const devDecl = declLines(src, 'device');
+  const pins: PinState[] = (res.pins ?? []).map((pin) => {
+    const line = pinDecl.get(pin.name) ?? 1;
+    return { pin, line, problems: at(line) };
+  });
+  const devices: DeviceState[] = (res.devices ?? []).map((device) => {
+    const line = devDecl.get(device.name) ?? 1;
+    return { device, line, problems: at(line) };
+  });
+  linkedLines = new Set([...pins, ...devices].map((u) => u.line));
+  renderHardware($('#panel-pins'), pins, devices, {
+    hover: (line) => view.dispatch({ effects: setLinkedLine.of(line) }),
+    open: (line) => jumpTo(view, line),
+  });
+
+  showC(errors ? '' : res.c_code);
+  $('#panel-c').classList.toggle('is-empty', errors > 0);
+  statesStale = true;
+  if (!$('#panel-states').hidden) drawStates();
+
+  $('#problem-count').textContent = diags.length ? String(diags.length) : '';
+  const say = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  if (errors) setStatus('error', warnings ? `${say(errors, 'error')}, ${say(warnings, 'warning')}` : say(errors, 'error'), ms);
+  else if (warnings) setStatus('warning', say(warnings, 'warning'), ms);
+  else setStatus('ok', 'Ready to build for the ESP32', ms);
 }
 
 function renderProblems(diags: Diagnostic[]) {
-  problems.replaceChildren();
+  const panel = $('#panel-problems');
   if (!diags.length) {
     const p = document.createElement('p');
-    p.className = 'empty';
-    p.textContent = 'No problems. Every pin and device checks out for the ESP32.';
-    problems.append(p);
+    p.className = 'aside';
+    p.textContent = 'No problems. Every pin and device fits the ESP32.';
+    panel.replaceChildren(p);
     return;
   }
-  const list = document.createElement('ul');
+  const list = document.createElement('ol');
+  list.className = 'problems';
   for (const d of diags) {
     const li = document.createElement('li');
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = `problem ${d.severity === 'error' ? 'error' : 'warning'}`;
+    b.className = d.severity === 'error' ? 'is-error' : 'is-warning';
     const where = document.createElement('span');
     where.className = 'where';
     where.textContent = `Line ${d.line}`;
@@ -196,60 +225,87 @@ function renderProblems(diags: Diagnostic[]) {
       hint.textContent = d.hint;
       b.append(hint);
     }
-    b.addEventListener('click', () => {
-      const pos = offset(d.line, d.col);
-      view.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
-      view.focus();
-    });
+    b.addEventListener('click', () => jumpTo(view, d.line, d.col));
     li.append(b);
     list.append(li);
   }
-  problems.append(list);
+  panel.replaceChildren(list);
 }
 
-// State machine diagrams, drawn with Mermaid, loaded the first time the tab opens.
-let statesDirty = true;
+// ---------- state machines ----------
+let statesStale = true;
 let mermaid: typeof import('mermaid').default | null = null;
-async function renderStates() {
-  if (!statesDirty) return;
-  statesDirty = false;
-  const res = compiler.states(view.state.doc.toString());
-  const machines = res.machines ?? [];
+let drawSeq = 0;
+async function drawStates() {
+  if (!compiler || !statesStale) return;
+  statesStale = false;
+  const panel = $('#panel-states');
+  const machines = compiler.states(view.state.doc.toString()).machines ?? [];
   if (!machines.length) {
-    statesPanel.innerHTML = '<p class="empty">This program has no state machines. Open the State machine example to see one.</p>';
+    const p = document.createElement('p');
+    p.className = 'aside';
+    p.textContent = 'This program has no state machines. The State machine and Elevator examples have one.';
+    panel.replaceChildren(p);
     return;
   }
-  if (!mermaid) {
-    statesPanel.innerHTML = '<p class="empty">Drawing…</p>';
-    mermaid = (await import('mermaid')).default;
-  }
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', fontFamily: 'Chivo, system-ui, sans-serif' });
-  const out: HTMLElement[] = [];
+  const seq = ++drawSeq;
+  if (!mermaid) mermaid = (await import('mermaid')).default;
+  const css = getComputedStyle(document.documentElement);
+  const v = (name: string) => css.getPropertyValue(name).trim();
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    fontFamily: 'Chivo, system-ui, sans-serif',
+    themeVariables: {
+      background: v('--sheet'),
+      primaryColor: v('--sheet'),
+      primaryBorderColor: v('--line-strong'),
+      primaryTextColor: v('--ink'),
+      lineColor: v('--muted'),
+      textColor: v('--muted'),
+      fontSize: '13px',
+      labelBackgroundColor: v('--paper'),
+      edgeLabelBackground: v('--paper'),
+    },
+  });
+  const figures: HTMLElement[] = [];
   for (const [i, m] of machines.entries()) {
     const fig = document.createElement('figure');
     const cap = document.createElement('figcaption');
     cap.textContent = m.name;
+    fig.append(cap);
     try {
-      const { svg } = await mermaid.render(`machine-${i}-${Date.now()}`, m.mermaid);
-      fig.innerHTML = svg;
+      const { svg } = await mermaid.render(`machine-${seq}-${i}`, m.mermaid);
+      fig.insertAdjacentHTML('beforeend', svg);
     } catch {
-      fig.textContent = "This machine couldn't be drawn.";
+      const p = document.createElement('p');
+      p.className = 'aside';
+      p.textContent = "This machine couldn't be drawn.";
+      fig.append(p);
     }
-    fig.prepend(cap);
-    out.push(fig);
+    figures.push(fig);
   }
-  statesPanel.replaceChildren(...out);
+  if (seq === drawSeq) panel.replaceChildren(...figures);
 }
 
-// Format.
-$('#format').addEventListener('click', () => {
+// ---------- actions ----------
+function format() {
+  if (!compiler) return;
   const res = compiler.format(view.state.doc.toString());
-  if (res.code !== undefined) setSource(res.code);
-  else status.textContent = `Fix the errors before formatting: ${res.error}`;
+  if (res.code === undefined) {
+    setStatus('error', 'Fix the errors first, then format');
+    return;
+  }
+  if (res.code !== view.state.doc.toString()) {
+    const head = view.state.selection.main.head;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: res.code }, selection: { anchor: Math.min(head, res.code.length) } });
+  }
+}
+$('#format').addEventListener('click', () => {
+  format();
+  view.focus();
 });
 
-// Copy a link that opens this program.
 const share = $<HTMLButtonElement>('#share');
 share.addEventListener('click', async () => {
   const url = `${location.origin}${location.pathname}#code=${await encode(view.state.doc.toString())}`;
@@ -260,7 +316,55 @@ share.addEventListener('click', async () => {
   } catch {
     share.textContent = 'Link is in the address bar';
   }
-  setTimeout(() => (share.textContent = 'Copy link'), 1800);
+  setTimeout(() => (share.textContent = 'Share'), 1800);
 });
 
-run();
+examplesMenu($('#examples'), examples, (ex) => {
+  replaceDoc(view, ex.source);
+  window.history.replaceState(null, '', location.pathname);
+  view.focus();
+});
+
+// ---------- resizable split ----------
+const split = $('#split');
+const divider = $('#divider');
+function setSplit(pct: number) {
+  const clamped = Math.min(75, Math.max(35, pct));
+  split.style.setProperty('--code', `${clamped}%`);
+  divider.setAttribute('aria-valuenow', String(Math.round(clamped)));
+  saved.set('volt-play:split', String(clamped));
+}
+setSplit(Number(saved.get('volt-play:split')) || 60);
+divider.setAttribute('aria-valuemin', '35');
+divider.setAttribute('aria-valuemax', '75');
+divider.addEventListener('pointerdown', (e) => {
+  divider.setPointerCapture(e.pointerId);
+  split.classList.add('is-resizing');
+  const rect = split.getBoundingClientRect();
+  const move = (ev: PointerEvent) => setSplit(((ev.clientX - rect.left) / rect.width) * 100);
+  const up = () => {
+    split.classList.remove('is-resizing');
+    divider.removeEventListener('pointermove', move);
+    divider.removeEventListener('pointerup', up);
+  };
+  divider.addEventListener('pointermove', move);
+  divider.addEventListener('pointerup', up);
+});
+divider.addEventListener('keydown', (e) => {
+  const now = Number(divider.getAttribute('aria-valuenow'));
+  if (e.key === 'ArrowLeft') setSplit(now - 2);
+  else if (e.key === 'ArrowRight') setSplit(now + 2);
+  else return;
+  e.preventDefault();
+});
+divider.addEventListener('dblclick', () => setSplit(60));
+
+// ---------- start ----------
+setStatus('loading', 'Loading the compiler');
+try {
+  compiler = await loadCompiler();
+  check();
+  if (linkNotice) setStatus('warning', linkNotice);
+} catch {
+  setStatus('error', "The compiler didn't load. Check your connection and reload the page.");
+}

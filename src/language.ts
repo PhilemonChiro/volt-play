@@ -1,11 +1,12 @@
 // Volt syntax colouring for CodeMirror, matching the landing page's
-// highlighter (web/src/lib/highlight.ts).
+// highlighter (web/src/lib/highlight.ts). The highlight style also colours
+// the generated C.
 import { StreamLanguage, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 
 const KEYWORDS = new Set([
-  'hardware', 'pin', 'setup', 'every', 'when', 'strict', 'task', 'machine', 'state', 'initial', 'enter',
-  'exit', 'after', 'on', 'let', 'var', 'const', 'if', 'else', 'match', 'for', 'in', 'while', 'fn',
+  'hardware', 'pin', 'device', 'setup', 'every', 'when', 'strict', 'task', 'machine', 'state', 'initial',
+  'enter', 'exit', 'after', 'on', 'let', 'var', 'const', 'if', 'else', 'match', 'for', 'in', 'while', 'fn',
   'return', 'or', 'and', 'not', 'retry', 'true', 'false', 'become', 'struct', 'enum', 'channel', 'storage',
 ]);
 const TYPES = new Set([
@@ -33,13 +34,12 @@ const volt = StreamLanguage.define<{ comment: boolean }>({
       return 'comment';
     }
     if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) return 'string';
-    if (stream.match(/^\d+(?:ms|us|s|m|h)\b/)) return 'number';
-    if (stream.match(/^\d+(?:\.\d+)?/)) return 'number';
+    if (stream.match(/^\d+(?:\.\d+)?(?:ms|us|s|m|h)?\b/)) return 'number';
     if (stream.match('->')) return 'keyword';
     const word = stream.match(/^[A-Za-z_]\w*/) as RegExpMatchArray | null;
     if (word) {
       if (KEYWORDS.has(word[0])) return 'keyword';
-      if (TYPES.has(word[0])) return 'typeName';
+      if (TYPES.has(word[0]) || /^[A-Z][A-Z0-9]{2,}$/.test(word[0])) return 'typeName';
       if (stream.peek() === '(') return 'function';
       return 'variableName';
     }
@@ -49,12 +49,15 @@ const volt = StreamLanguage.define<{ comment: boolean }>({
   languageData: { commentTokens: { line: '//', block: { open: '/*', close: '*/' } } },
 });
 
-const style = HighlightStyle.define([
-  { tag: t.keyword, color: 'var(--c-keyword)' },
-  { tag: t.typeName, color: 'var(--c-type)' },
-  { tag: t.string, color: 'var(--c-string)' },
-  { tag: t.number, color: 'var(--c-number)' },
-  { tag: t.comment, color: 'var(--c-comment)', fontStyle: 'italic' },
-]);
+export const highlight = syntaxHighlighting(
+  HighlightStyle.define([
+    { tag: [t.keyword, t.controlKeyword, t.definitionKeyword, t.modifier, t.operatorKeyword], color: 'var(--c-keyword)' },
+    { tag: [t.typeName, t.standard(t.typeName)], color: 'var(--c-type)' },
+    { tag: [t.string, t.character], color: 'var(--c-string)' },
+    { tag: [t.number, t.bool], color: 'var(--c-number)' },
+    { tag: [t.comment, t.lineComment, t.blockComment], color: 'var(--c-comment)', fontStyle: 'italic' },
+    { tag: [t.processingInstruction, t.meta], color: 'var(--c-comment)' },
+  ]),
+);
 
-export const voltLanguage = [volt, syntaxHighlighting(style)];
+export const voltLanguage = [volt, highlight];
