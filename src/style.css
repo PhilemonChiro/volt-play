@@ -10,6 +10,10 @@ body {
   height: 100%;
   margin: 0;
 }
+/* The playground is an app, not a page: no double-tap or pinch zoom (with the viewport meta in index.html). */
+html {
+  touch-action: pan-x pan-y;
+}
 body {
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr) 28px;
