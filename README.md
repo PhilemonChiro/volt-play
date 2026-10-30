@@ -10,3 +10,8 @@ diagrams alongside. No server; shared links carry the program in the URL.
 
 The build expects the compiler at ../compiler and device descriptors at
 ../volt/devices.
+
+## License
+
+[GNU AGPL v3](LICENSE). A commercial licence is available: contact pchiro29@gmail.com. Contributions are made under the
+[Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).
