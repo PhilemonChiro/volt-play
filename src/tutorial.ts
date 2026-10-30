@@ -81,6 +81,14 @@ export function tutorial(d: Deps) {
   // The address bar follows the view, so a reload comes back to the same place.
   const route = (q: string) => window.history.replaceState(null, '', location.pathname + q);
 
+  const onScreen = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const img = e.target as HTMLImageElement;
+      const loop = img.src.includes('-loop.webp');
+      if (e.isIntersecting !== loop) img.src = e.isIntersecting ? img.src.replace(/\.webp$/, '-loop.webp') : img.src.replace(/-loop\.webp$/, '.webp');
+    }
+  });
+
   function showSheet() {
     busy++;
     route('?learn');
@@ -112,15 +120,9 @@ export function tutorial(d: Deps) {
         img.alt = '';
         img.decoding = 'async';
         art.append(img);
-        // The illustration plays its short loop while the tile is pointed at or focused; the still and the loop
-        // start on the same frame, so the swap doesn't jump.
-        const play = (on: boolean) => {
-          if (!reduced()) img.src = `/learn/${c.id}${on ? '-loop' : ''}.webp`;
-        };
-        b.addEventListener('pointerenter', () => play(true));
-        b.addEventListener('pointerleave', () => play(false));
-        b.addEventListener('focus', () => play(true));
-        b.addEventListener('blur', () => play(false));
+        // The illustration plays its loop while it's on screen, and shows its still otherwise (or always,
+        // with reduced motion); the still and the loop start on the same frame, so the swap doesn't jump.
+        if (!reduced()) onScreen.observe(img);
         const body = el('span', 'ls-body');
         const resumeAt = c.id === inProgress ? Number(d.store.get('volt-play:lesson')) || 0 : 0;
         const seen = isDone ? c.steps.length : Math.min(stepsSeen(c.id), c.steps.length);
