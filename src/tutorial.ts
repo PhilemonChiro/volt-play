@@ -2,7 +2,7 @@
 // steps. A step types its program into the editor, spotlights the lines it's
 // about, and labels the words that matter. A "your turn" step puts its task
 // in a card under the line to change, and waits for the compiler to confirm.
-import type { EditorView } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import { spotLines, type Course, type Lesson, type Result } from './lessons';
 import { courses } from './courses';
@@ -333,6 +333,11 @@ export function tutorial(d: Deps) {
       effects.push(setCallout.of({ line: at ?? 1, el: callout }));
       // If someone hasn't got going after a while, offer the answer too.
       showMeTimer = window.setTimeout(offerAnswer, 20_000);
+    }
+    // On a phone the editor shows only a few lines above the lesson sheet: bring the step's lines to the top.
+    const first = Math.min(...spots.filter((n) => n >= 1 && n <= d.view.state.doc.lines));
+    if (Number.isFinite(first) && matchMedia('(max-width: 860px)').matches) {
+      effects.push(EditorView.scrollIntoView(d.view.state.doc.line(first).from, { y: 'start', yMargin: 8 }));
     }
     d.view.dispatch({ effects });
     if (l.timeline) {
