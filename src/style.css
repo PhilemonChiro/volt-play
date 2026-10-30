@@ -308,6 +308,20 @@ button,
   font: 12.5px var(--sans);
   opacity: 0.85;
 }
+.inline-note-fix {
+  margin-left: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--signal);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--signal) 40%, transparent);
+}
+.inline-note-fix:hover {
+  text-decoration-color: currentColor;
+}
 .ip-message {
   color: var(--ink);
 }

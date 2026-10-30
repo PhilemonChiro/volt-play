@@ -72,19 +72,33 @@ class ProblemWidget extends WidgetType {
   }
 }
 
-// A warning is a quiet note at the end of its line; errors get the full block.
+// A warning is a quiet note at the end of its line; errors get the full block. A warning with a fix
+// offers its first one as a small action after the note.
 class NoteWidget extends WidgetType {
-  constructor(readonly text: string) {
+  constructor(readonly diags: Diagnostic[]) {
     super();
   }
   eq(other: NoteWidget) {
-    return other.text === this.text;
+    return JSON.stringify(other.diags) === JSON.stringify(this.diags);
   }
-  toDOM() {
+  toDOM(view: EditorView) {
     const span = document.createElement('span');
     span.className = 'inline-note';
-    span.textContent = this.text;
+    span.textContent = this.diags.map((d) => d.message).join('  ');
+    const fix = this.diags.find((d) => d.fixes?.length)?.fixes?.[0];
+    if (fix) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'inline-note-fix';
+      b.textContent = fix.title;
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', () => applyFix(view, fix));
+      span.append(b);
+    }
     return span;
+  }
+  ignoreEvent() {
+    return true;
   }
 }
 
@@ -114,7 +128,7 @@ const problemField = StateField.define<DecorationSet>({
         const end = state.doc.line(line).to;
         const errors = diags.filter((d) => d.severity === 'error');
         const warnings = diags.filter((d) => d.severity !== 'error');
-        if (warnings.length) ranges.push(Decoration.widget({ widget: new NoteWidget(warnings.map((d) => d.message).join('  ')), side: 1 }).range(end));
+        if (warnings.length) ranges.push(Decoration.widget({ widget: new NoteWidget(warnings), side: 1 }).range(end));
         for (const d of errors) ranges.push(Decoration.widget({ widget: new ProblemWidget(d), block: true, side: 2 }).range(end));
       }
       deco = Decoration.set(ranges, true);
