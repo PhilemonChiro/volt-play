@@ -1,4 +1,3 @@
-import './style.css';
 import { loadCompiler, type Compiler, type Diagnostic } from './compiler';
 import { createEditor, replaceDoc, jumpTo, setProblems, setLinkedLine, setEditable } from './editor';
 import { tutorial } from './tutorial';
@@ -43,7 +42,11 @@ async function decode(code: string): Promise<string> {
 }
 
 let linkNotice = '';
+let opened = '';
 async function firstProgram(): Promise<string> {
+  return (opened = await readFirstProgram());
+}
+async function readFirstProgram(): Promise<string> {
   const m = location.hash.match(/^#code=(.+)$/);
   if (m) {
     try {
@@ -124,7 +127,10 @@ function declLines(src: string, keyword: 'pin' | 'device'): Map<string, number> 
 function check() {
   if (!compiler) return;
   const src = view.state.doc.toString();
-  saved.set('volt-play:source', src);
+  // Lesson code isn't the visitor's program: a reload mid-course keeps theirs.
+  if (!tutor.isOpen) saved.set('volt-play:source', src);
+  // A shared link stops being true once the code is edited, so a reload keeps the edits.
+  if (location.hash && src !== opened) window.history.replaceState(null, '', location.pathname + location.search);
   const t0 = performance.now();
   const res = compiler.compile(src);
   const ms = Math.max(1, Math.round(performance.now() - t0));
@@ -398,16 +404,17 @@ $('#intro-tour').addEventListener('click', () => {
 $('#learn').addEventListener('click', dismissIntro);
 
 // ---------- start ----------
+// ?learn opens the course list, ?learn=<course>&step=<n> a lesson (links, and reloads). The right screen is
+// set up before the boot screen goes, and the compiler loads behind it.
+const q = new URLSearchParams(location.search);
+if (q.has('learn')) {
+  dismissIntro();
+  tutor.open(q.get('learn') || undefined, Math.max(0, Number(q.get('step')) - 1 || 0));
+}
+requestAnimationFrame(() => document.documentElement.classList.remove('booting'));
 setStatus('loading', 'Loading the compiler');
 try {
   compiler = await loadCompiler();
-  // Links from the Learn Volt page open a course: /?learn=<course>.
-  const learn = new URLSearchParams(location.search).get('learn');
-  if (learn) {
-    window.history.replaceState(null, '', location.pathname);
-    dismissIntro();
-    tutor.open(learn);
-  }
   check();
   if (linkNotice) setStatus('warning', linkNotice);
 } catch {

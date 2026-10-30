@@ -145,13 +145,14 @@ button,
   --code: 60fr;
   --side: 40fr;
   --lesson: 0px;
+  --lesson-w: clamp(400px, 32vw, 480px);
   display: grid;
   grid-template-columns: var(--lesson) minmax(0, var(--code)) 1px minmax(0, var(--side));
   min-height: 0;
   transition: grid-template-columns 460ms var(--ease);
 }
 .split.is-learning {
-  --lesson: 360px;
+  --lesson: var(--lesson-w);
 }
 .split.is-resizing {
   transition: none;
@@ -591,7 +592,7 @@ tr.is-error .hw-num {
 }
 /* Fixed width so the text doesn't reflow while the column opens. */
 .lesson-inner {
-  width: 360px;
+  width: var(--lesson-w);
   height: 100%;
   display: grid;
   grid-template-rows: auto auto auto auto 1fr;
@@ -1378,15 +1379,14 @@ main.split {
 .ls-tile:focus-visible .ls-art {
   box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--signal);
 }
-/* The drawing, on a soft wash of the course's colour. */
-/* Each course's illustration (art/*.html, drawn with Colorfigures), standing on the tile. */
+/* Each course's illustration (art/*.html, drawn with Colorfigures), on a cream tile. */
 .ls-art {
   position: relative;
   display: block;
   aspect-ratio: 3 / 2;
   border-radius: 10px;
   overflow: hidden;
-  background: radial-gradient(90% 80% at 50% 45%, color-mix(in srgb, var(--ink) 9%, var(--sheet)), var(--sheet));
+  background: #f1e7d0;
   transition: box-shadow 160ms ease;
 }
 .ls-art img {

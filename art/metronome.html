@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Metronome</title></head><body>
 <script src="core.js"></script>
+<script src="anim.js"></script>
 <script>
 /* Mechanical metronome: the Time course (a block that runs every 500ms).
    How it really works: a wound spring drives an escapement that swings the pendulum rod left and right; the sliding
@@ -15,7 +16,7 @@ const MH = 70;                     // body height
 const TOPW = 12;                   // width at the top (y)
 const MB = PALS.tomato;
 const WOODM = { l: '#d9a86c', m: '#bf8a4f', d: '#8e6236' };
-const ROD_A = -16;                 // the rod, swung to one side, in degrees
+const ROD_SWING = 16;              // the rod's swing either side, in degrees
 
 const ring = (z, hw, hd) => [[MW / 2 + hd, MD / 2 - hw, z], [MW / 2 + hd, MD / 2 + hw, z], [MW / 2 - hd, MD / 2 + hw, z], [MW / 2 - hd, MD / 2 - hw, z]];
 
@@ -35,7 +36,8 @@ function scene(st, m){
     let t = ''; for (let z = 22; z <= MH - 12; z += 4) { const hw = 1.2; t += pd([slot(z, -hw), slot(z, hw)], false); }
     s += `<path d="${t}" fill="none" stroke="#f3e6c8" stroke-width="1" opacity=".8"/>`;
     // pendulum rod from the pivot, swung over, with its sliding weight
-    const piv = [fx(16) + 1.5, MD / 2, 16], a = ROD_A * Math.PI / 180, L = 52;
+    // four beats per loop (about 67 a minute)
+    const piv = [fx(16) + 1.5, MD / 2, 16], a = -ROD_SWING * Math.cos(animT() * 4 * Math.PI) * Math.PI / 180, L = 52;
     const tip = [piv[0] + Math.sin(-a) * 0 + (fx(16 + L) - fx(16)), MD / 2 + Math.sin(a) * L, 16 + Math.cos(a) * L];
     const w = [piv[0] + (tip[0] - piv[0]) * .62, piv[1] + (tip[1] - piv[1]) * .62, piv[2] + (tip[2] - piv[2]) * .62];
     s += rod(piv, tip, .8, METAL, toneI, 1);
@@ -47,12 +49,15 @@ function scene(st, m){
   s += box(MW / 2 - 6.5, MD / 2 - TOPW / 2 - .5, MH, MW / 2 + 6.5, MD / 2 + TOPW / 2 + .5, MH + 3, WOODM, toneI, 1.4);
   if (facing([0, 1, 0])) {
     const kx = MW / 2, ky = MD / 2 + (MD / 2 + (TOPW / 2 - MD / 2) * (24 - 6) / (MH - 6)), kz = 24;
-    s += rod([kx, ky, kz], [kx, ky + 4, kz], 1.2, METAL, toneI, .9) + box(kx - 5, ky + 4, kz - 1.5, kx + 5, ky + 5.5, kz + 1.5, METAL, toneI, 1);
+    s += rod([kx, ky, kz], [kx, ky + 4, kz], 1, METAL, toneI, .9);
+    for (const dz of [-3, 3]) s += box(kx - 2.6, ky + 4, kz + dz - 2.6, kx + 2.6, ky + 5.2, kz + dz + 2.6, METAL, toneI, .9);
+    s += box(kx - 1.6, ky + 4, kz - 3, kx + 1.6, ky + 5.2, kz + 3, METAL, toneI, 0);
   }
   return s;
 }
 
 const ui = mountFigure({ fig: '03', title: 'Metronome', size: [MW + 6, MD + 12, MH + 4], center: [MW / 2, MD / 2 + 4], palette: 'tomato', state: {}, scene });
+animPlay(ui);
 </script>
 <script src="still.js"></script>
 </body></html>

@@ -78,8 +78,12 @@ export function tutorial(d: Deps) {
   const grid = $('#ls-grid');
   const stepsSeen = (id: string) => Number(d.store.get(`volt-play:steps:${id}`)) || 0;
 
+  // The address bar follows the view, so a reload comes back to the same place.
+  const route = (q: string) => window.history.replaceState(null, '', location.pathname + q);
+
   function showSheet() {
     busy++;
+    route('?learn');
     // Remembered before it's cleared, so the gallery can offer to continue it.
     const inProgress = course?.id ?? d.store.get('volt-play:course');
     course = null;
@@ -108,6 +112,15 @@ export function tutorial(d: Deps) {
         img.alt = '';
         img.decoding = 'async';
         art.append(img);
+        // The illustration plays its short loop while the tile is pointed at or focused; the still and the loop
+        // start on the same frame, so the swap doesn't jump.
+        const play = (on: boolean) => {
+          if (!reduced()) img.src = `/learn/${c.id}${on ? '-loop' : ''}.webp`;
+        };
+        b.addEventListener('pointerenter', () => play(true));
+        b.addEventListener('pointerleave', () => play(false));
+        b.addEventListener('focus', () => play(true));
+        b.addEventListener('blur', () => play(false));
         const body = el('span', 'ls-body');
         const resumeAt = c.id === inProgress ? Number(d.store.get('volt-play:lesson')) || 0 : 0;
         const seen = isDone ? c.steps.length : Math.min(stepsSeen(c.id), c.steps.length);
@@ -280,6 +293,7 @@ export function tutorial(d: Deps) {
     const run = ++busy;
     index = Math.max(0, Math.min(i, c.steps.length - 1));
     d.store.set('volt-play:lesson', String(index));
+    route(`?learn=${c.id}&step=${index + 1}`);
     d.store.set(`volt-play:steps:${c.id}`, String(Math.max(stepsSeen(c.id), index)));
     const l = c.steps[index];
     met = false;
@@ -368,7 +382,7 @@ export function tutorial(d: Deps) {
   }
 
   // Opens the list, the course in progress, or a given course.
-  function open(courseId?: string) {
+  function open(courseId?: string, at = 0) {
     if (isOpen) return;
     isOpen = true;
     // The visitor's own program comes back if they leave part way through.
@@ -377,7 +391,7 @@ export function tutorial(d: Deps) {
     $('#learn').setAttribute('aria-current', 'page');
     $('#go-playground').removeAttribute('aria-current');
     const wanted = courses.find((c) => c.id === courseId);
-    if (wanted) start(wanted);
+    if (wanted) start(wanted, at);
     else showSheet();
   }
 
@@ -385,6 +399,7 @@ export function tutorial(d: Deps) {
     if (!isOpen) return;
     isOpen = false;
     busy++;
+    route('');
     split.classList.remove('is-learning');
     hideSheet();
     $('#learn').setAttribute('aria-pressed', 'false');

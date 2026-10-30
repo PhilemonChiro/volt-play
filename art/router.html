@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Wi-Fi router</title></head><body>
 <script src="core.js"></script>
+<script src="anim.js"></script>
 <script>
 /* A Wi-Fi router: the "When things fail" course (connect, and retry when it drops).
    How it really works: the router broadcasts on its antennas; a device that loses the link tries again a few times
@@ -35,8 +36,14 @@ function scene(st, m){
   if (facing([1, 0, 0])) {
     body += fill(pd(on(PX(RW), OUT)), tone([1, 0, 0], RM)) + ink(pd(on(PX(RW), OUT)), 2);
     // three status lights with their glow; the internet light is amber: retrying
-    const L = [{ y: RD - 12, col: '#43c25c' }, { y: RD - 20, col: '#f4b829' }, { y: RD - 28, col: '#43c25c' }];
+    // the loop: the link is down and the internet light blinks amber while it retries, three times; then it
+    // connects and turns green, and the Wi-Fi light flickers with traffic
+    const t = animT(), up = t > .62, k = Math.floor(t * 36);
+    const net = up ? '#43c25c' : (t * 36) % 6 < 3 ? '#f4b829' : null;
+    const wifi = up && [0, 2, 3, 5, 8, 9, 11].includes(k % 12) ? null : '#43c25c';
+    const L = [{ y: RD - 12, col: '#43c25c' }, { y: RD - 20, col: net }, { y: RD - 28, col: wifi }];
     for (const l of L) {
+      if (!l.col) { body += shape(on(PX(RW + .2), ellUV(l.y, RH / 2 + 2, 1.1, 1.1, 14)), '#c9c4b3', .7); continue; }
       body += `<g opacity=".7" filter="url(#rtGlow)">${fill(pd(on(PX(RW + .3), ellUV(l.y, RH / 2 + 2, 2.6, 2.6, 16))), l.col)}</g>`;
       body += shape(on(PX(RW + .2), ellUV(l.y, RH / 2 + 2, 1.1, 1.1, 14)), l.col, .7);
     }
@@ -51,6 +58,7 @@ function scene(st, m){
 }
 
 const ui = mountFigure({ fig: '07', title: 'Router', size: [RW, RD, 36], palette: 'cobalt', state: {}, scene });
+animPlay(ui);
 </script>
 <script src="still.js"></script>
 </body></html>

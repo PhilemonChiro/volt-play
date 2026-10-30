@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gears</title></head><body>
 <script src="core.js"></script>
+<script src="anim.js"></script>
 <script>
 /* Three meshed gears on a plate: the Tasks course (work running side by side, each at its own pace).
    How it really works: the big gear drives the middle one, which drives the small one; with fewer teeth each turns
@@ -41,7 +42,7 @@ function gear(i, rot){
   s += fill(pd(B), g.pal.l) + ink(pd(B), 1.1);
   // a recessed web with spokes, then the hub and its axle
   s += shape(on(PZ(z1 + .05), ellUV(cx, cy, g.r - 6, g.r - 6, 32)), g.pal.m, .9);
-  const holes = g.n >= 16 ? 5 : 0;
+  const holes = g.n >= 16 ? g.n / 4 : 0;       // a hole every 4 teeth, so a loop of 4 teeth is seamless
   for (let k = 0; k < holes; k++) { const a = rot + k / holes * 2 * Math.PI, rr = (g.r - 6 + 6) / 2 + 1;
     s += shape(on(PZ(z1 + .08), ellUV(cx + rr * Math.cos(a), cy + rr * Math.sin(a), (g.r - 12) / 3.2, (g.r - 12) / 3.2, 14)), g.pal.d, .8); }
   s += cyl(cx, cy, z1, z1 + 2.5, Math.max(4, g.r * .28), g.pal, toneI, 1.2, 24);
@@ -58,10 +59,13 @@ function scene(st, m){
   for (const [x, y] of [[18, 74], [132, 74], [18, 172], [132, 172]]) s += cyl(x, y, PLATE_Z, PLATE_Z + .8, 2.6, METAL, toneI, .8, 14) + line([[x - 1.6, y, PLATE_Z + .85], [x + 1.6, y, PLATE_Z + .85]], .7);
   // rotations chosen so the teeth interlock at each contact
   const rots = [0, Math.PI / 16 + .12, .3];
-  return s + byDepth(GEARS.map((g, i) => gear(i, rots[i])));
+  // each gear turns 4 teeth per loop, neighbours the opposite way, so they stay in mesh
+  const turn = animT() * 4 * 2 * Math.PI;
+  return s + byDepth(GEARS.map((g, i) => gear(i, rots[i] + (i % 2 ? -1 : 1) * turn / g.n)));
 }
 
 const ui = mountFigure({ fig: '04', title: 'Gears', size: [130, 114, 18], center: [75, 123], palette: 'mustard', state: {}, scene });
+animPlay(ui);
 </script>
 <script src="still.js"></script>
 </body></html>

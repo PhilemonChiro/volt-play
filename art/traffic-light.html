@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Traffic light</title></head><body>
 <script src="core.js"></script>
+<script src="anim.js"></script>
 <script>
 /* Traffic light and crossing button: the State machines course.
    How it really works: a controller holds the junction in one state at a time (green, amber, red). A timer moves it on;
@@ -14,14 +15,15 @@
 const TL_PX = 30, TL_PY = 62, TL_POLE_R = 4.5, TL_POLE_H = 210;     // pole centre and size
 const TL_HX0 = 36, TL_HX1 = 60, TL_HY0 = 48, TL_HY1 = 76, TL_HZ0 = 118, TL_HZ1 = 200;   // head housing
 const TL_LAMPS = [{ z: 186, col: '#e2483d', name: 'red' }, { z: 159, col: '#f4b829', name: 'amber' }, { z: 132, col: '#43c25c', name: 'green' }];
-const TL_ON = 'green';
+// the loop: green; the crossing button is pressed and WAIT lights; amber; red for the crossing; back to green
+const tlPhase = (t) => (t < .45 ? 'green' : t < .6 ? 'amber' : t < .96 ? 'red' : 'green');
 const TL_POLE = { l: '#b9c0c4', m: '#939ca1', d: '#5f676c' };
 const TL_HOUSE = PALS.mustard;
 const TL_BOARD = { l: '#2a2f2e', m: '#1f2423', d: '#141817' };
 const TL_BTN_X = 62, TL_BTN_Y = 14;                                  // crossing-button post, nearer the viewer
 
-function tlLamp(l){
-  const cy = (TL_HY0 + TL_HY1) / 2, x = TL_HX1, r = 9.5, lit = l.name === TL_ON;
+function tlLamp(l, tlOn){
+  const cy = (TL_HY0 + TL_HY1) / 2, x = TL_HX1, r = 9.5, lit = l.name === tlOn;
   let s = '';
   // the lens in a dark ring; the lit one glows
   s += shape(on(PX(x + .2), ellUV(cy, l.z, r + 1.6, r + 1.6, 28)), '#151a19', .9);
@@ -67,7 +69,8 @@ function scene(st, m){
   if (FRONT) {
     // cell seams between the lamps
     for (const z of [145.5, 172.5]) head += ink(pd([[TL_HX1 + .1, TL_HY0, z], [TL_HX1 + .1, TL_HY1, z]], false), .8);
-    head += TL_LAMPS.map(tlLamp).join('');
+    const tlOn = tlPhase(animT());
+    head += TL_LAMPS.map(l => tlLamp(l, tlOn)).join('');
   }
   parts.push({ box: [[TL_HX0 - 4, TL_HY0 - 9, TL_HZ0 - 9], [TL_HX1 + 9, TL_HY1 + 9, TL_HZ1 + 9]], svg: head });
 
@@ -77,9 +80,10 @@ function scene(st, m){
   btn += box(TL_BTN_X - 4, TL_BTN_Y - 7, 92, TL_BTN_X + 4, TL_BTN_Y + 7, 112, BP, toneI, 1.4);
   if (FRONT) {
     btn += shape(on(PX(TL_BTN_X + 4.1), ellUV(TL_BTN_Y, 99, 3.4, 3.4, 20)), '#2e3735', .9);
-    btn += cylX(TL_BTN_X + 4, TL_BTN_X + 5.6, TL_BTN_Y, 99, 2.4, METAL, toneI, .8, 18);
+    const t = animT(), pressed = t > .2 && t < .25, waiting = t > .2 && t < .6;
+    btn += cylX(TL_BTN_X + 4, TL_BTN_X + (pressed ? 4.6 : 5.6), TL_BTN_Y, 99, 2.4, METAL, toneI, .8, 18);
     btn += shape(on(PX(TL_BTN_X + 4.1), rrUV(TL_BTN_Y - 4.5, 104.5, TL_BTN_Y + 4.5, 109.5, 1.2)), '#1d2a26', .7);
-    btn += tx(TL_BTN_X + 4.2, TL_BTN_Y, 106, 'WAIT', 3, '#8af0ae', 800);
+    btn += tx(TL_BTN_X + 4.2, TL_BTN_Y, 106, 'WAIT', 3, waiting ? '#8af0ae' : '#3a4a44', 800);
   }
   parts.push({ box: [[TL_BTN_X - 4, TL_BTN_Y - 7, 0], [TL_BTN_X + 6, TL_BTN_Y + 7, 112]], svg: btn });
 
@@ -90,6 +94,7 @@ const ui = mountFigure({
   fig: '01', title: 'Traffic light', size: [TL_BTN_X + 8, TL_PY + 18, TL_POLE_H + 6], center: [42, 46], palette: 'mustard',
   state: {}, scene, credit: true,
 });
+animPlay(ui);
 </script>
 <script src="still.js"></script>
 </body></html>

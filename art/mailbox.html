@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mailbox</title></head><body>
 <script src="core.js"></script>
+<script src="anim.js"></script>
 <script>
 /* A rural mailbox on a post: the Channels course (one side puts values in, the other takes them out).
    How it really works: the sender drops letters in through the front door and raises the flag; the collector sees
@@ -10,19 +11,23 @@
           BOX    arched steel body (a flat floor, a round top) . front door with a pull tab, open . red flag on its pivot
           MAIL   three letters, the front one half in through the door
    Scale: 1 unit = 1 cm. */
-const BX0 = 10, BX1 = 58, BY0 = 30, BY1 = 52, BZ = 100, BH = 26;      // box along x, width y, floor at z = BZ
+const BX0 = 10, BX1 = 58, BY0 = 30, BY1 = 52, BZ = 84, BH = 26;      // box along x, width y, floor at z = BZ
 const BOXM = PALS.mint;
 const POSTM = { l: '#c99a62', m: '#a87b48', d: '#6e4c29' };
 const ARCH = (() => { const w = BY1 - BY0, r = w / 2, p = [[BY0, BZ], [BY1, BZ], [BY1, BZ + BH - r]];
   for (let i = 1; i < 12; i++) { const a = i / 12 * Math.PI; p.push([BY0 + r + r * Math.cos(a), BZ + BH - r + r * Math.sin(a)]); }
   p.push([BY0, BZ + BH - r]); return p; })();
 
-function letter(x0, y, z, tilt){
+function letter(x0, y, z, x1 = x0 + 14){
   const L = { l: '#fbfaf3', m: '#e3e0d2', d: '#bdb8a6' };
-  return box(x0, y - 8, z, x0 + 14, y + 8, z + 1.2, L, toneI, .9);
+  return box(x0, y - 8, z, x1, y + 8, z + 1.2, L, toneI, .9);
 }
 
 function scene(st, m){
+  // the loop: a letter appears at the door, slides in, the flag goes up; later the flag comes down
+  const t = animT(), slide = animRamp(t, .08, .42), fade = animRamp(t, 0, .08) * (1 - animRamp(t, .9, 1));
+  const flagA = (animRamp(t, .46, .58) - animRamp(t, .84, .96)) * Math.PI / 2;     // 0 down, 90 degrees up
+  const LX = BX1 + 6 - 20 * slide, LY = (BY0 + BY1) / 2, LZ = BZ + 1.4 + 3 * (1 - slide);
   let s = castShadow([...on(PZ(0), rectUV(28, 37, 36, 45)), [32, 41, BZ], ...on(PX(BX0), ARCH), ...on(PX(BX1), ARCH)]);
   const parts = [];
   parts.push({ box: [[28, 37, 0], [36, 45, BZ - 4]], svg: box(28, 37, 0, 36, 45, BZ - 4, POSTM, toneI, 1.8) });
@@ -34,7 +39,9 @@ function scene(st, m){
   if (FRONT) {
     body += shape(on(PX(BX1 + .05), ARCH), '#2b2523', 1.8);
     // letters inside, seen through the opening, and one sliding in
-    body += clipTo(on(PX(BX1 + .1), ARCH), letter(BX1 - 14, (BY0 + BY1) / 2, BZ + 1, 0) + letter(BX1 - 16, (BY0 + BY1) / 2, BZ + 2.4, 0));
+    let inside = letter(BX1 - 14, LY, BZ + .2);
+    if (LX < BX1) inside += `<g opacity="${fade.toFixed(3)}">${letter(LX, LY, LZ, Math.min(BX1, LX + 14))}</g>`;
+    body += clipTo(on(PX(BX1 + .1), ARCH), inside);
   }
   body += hullInk([...on(PX(BX0), ARCH), ...on(PX(BX1), ARCH)], 2.8);
   parts.push({ box: [[BX0, BY0, BZ], [BX1, BY1, BZ + BH]], svg: body });
@@ -42,17 +49,22 @@ function scene(st, m){
   if (FRONT) {
     const door = ARCH.map(([y, z]) => [BX1 + (z - BZ), y, BZ - .2]);
     parts.push({ box: [[BX1, BY0, BZ - 1], [BX1 + BH, BY1, BZ]], svg: shape(door, BOXM.l, 1.8) + box(BX1 + BH - 2, (BY0 + BY1) / 2 - 3, BZ - 1.5, BX1 + BH, (BY0 + BY1) / 2 + 3, BZ, METAL, toneI, .8) });
-    parts.push({ box: [[BX1 - 4, 33, BZ + 4], [BX1 + 12, 49, BZ + 6]], svg: letter(BX1 - 4, (BY0 + BY1) / 2, BZ + 4.5, 0) });
+    if (LX + 14 > BX1) parts.push({ box: [[BX1, LY - 8, LZ], [LX + 14, LY + 8, LZ + 1.2]], svg: `<g opacity="${fade.toFixed(3)}">${letter(Math.max(BX1, LX), LY, LZ, LX + 14)}</g>` });
   }
-  // the red flag, raised, on the side facing the viewer
-  const FLAG_Y = BY0 - .6;
-  parts.push({ box: [[34, FLAG_Y - 1.2, BZ + 6], [44, FLAG_Y, BZ + 34]], svg:
-    box(38, FLAG_Y - 1, BZ + 6, 40, FLAG_Y, BZ + 30, PALS.tomato, toneI, 1) + box(38, FLAG_Y - 1, BZ + 24, 48, FLAG_Y, BZ + 32, PALS.tomato, toneI, 1.2)
-    + cylX(38, 40, FLAG_Y - .5, BZ + 9, 1.6, METAL, toneI, .8, 12).replace('', '') });
+  // the red flag on its pivot, on the side facing the viewer: an arm with a plate at its end
+  const FLAG_Y = BY1 + 1.6, FP = [40, BZ + 10];
+  const fr = (u, v) => [FP[0] - u * Math.cos(flagA) - v * Math.sin(flagA), FP[1] + u * Math.sin(flagA) - v * Math.cos(flagA)];  // u along the arm
+  const slab = (pts) => { const A = pts.map(([x, z]) => [x, FLAG_Y - 1, z]), B = pts.map(([x, z]) => [x, FLAG_Y, z]);
+    return loft(B, A, n => toneI(n, PALS.tomato)) + (facing([0, 1, 0]) ? shape(B, PALS.tomato.l, 1) : shape(A, PALS.tomato.m, 1)); };
+  const arm = [fr(-1, -1), fr(20, -1), fr(20, 1), fr(-1, 1)];
+  const plate = [fr(14, -8), fr(23, -8), fr(23, 1), fr(14, 1)];
+  parts.push({ box: [[FP[0] - 24, FLAG_Y - 1, BZ + 2], [FP[0] + 9, FLAG_Y, BZ + 34]], svg:
+    slab(arm) + slab(plate) + cylX(FP[0] - 1, FP[0] + 1, FLAG_Y + .4, FP[1], 1.6, METAL, toneI, .8, 12) });
   return s + byDepth(parts);
 }
 
 const ui = mountFigure({ fig: '06', title: 'Mailbox', size: [BX1 + BH, BY1, BZ + 34], center: [44, 41], palette: 'mint', state: {}, scene });
+animPlay(ui);
 </script>
 <script src="still.js"></script>
 </body></html>

@@ -9,3 +9,25 @@ if (new URLSearchParams(location.search).has('still')) {
     #fig { max-width: none !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; }`;
   document.head.append(s);
 }
+
+// With ?sheet=N&first=F as well, the page lays out the N frames of the figure's loop (art/anim.js), from frame F,
+// in a grid of 600 x 400 cells, for art/render.sh to shoot once (in a window big enough) and cut up.
+const sheetQ = new URLSearchParams(location.search);
+if (sheetQ.has('still') && sheetQ.has('sheet')) {
+  const n = Number(sheetQ.get('sheet')), first = Number(sheetQ.get('first') || 0), cols = Math.ceil(Math.sqrt(n));
+  window.addEventListener('load', () => setTimeout(() => {
+    const fig = document.querySelector('#fig'), w = 600, h = 400, cells = [];
+    fig.style.cssText = `width:${w}px !important;height:${h}px !important`;
+    for (let i = 0; i < n; i++) {
+      window.animAt = ((first + i) % n) / n;
+      ui.render();
+      cells.push(`<div style="width:${w}px;height:${h}px">${fig.outerHTML.replace(' id="fig"', '')}</div>`);
+    }
+    const grid = document.createElement('div');
+    grid.style.cssText = `position:fixed;inset:0;display:grid;grid-template-columns:repeat(${cols},${w}px);background:transparent`;
+    grid.innerHTML = cells.join('');
+    grid.querySelectorAll('svg').forEach((s) => { s.style.cssText = `width:${w}px;height:${h}px;max-width:none;margin:0`; });
+    fig.style.display = 'none';
+    document.body.append(grid);
+  }, 50));
+}

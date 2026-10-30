@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Weather station</title></head><body>
 <script src="core.js"></script>
+<script src="anim.js"></script>
 <script>
 /* A small weather station: the Sensors course (a BME280 reads temperature, humidity and pressure).
    How it really works: the sensor sits in a louvred white screen that shades it from the sun and lets air through;
@@ -40,17 +41,39 @@ function scene(st, m){
   // the anemometer on top: hub, three arms, three cups (cones open sideways)
   const HZ = MAST_H + 2;
   let an = cyl(MX, MY, MAST_H, HZ + 3, 2.6, PALS.mustard, toneI, 1.2, 18);
-  for (const a of [20, 140, 260]) {
-    const r = a * Math.PI / 180, end = [MX + 17 * Math.cos(r), MY + 17 * Math.sin(r), HZ + 1.5];
+  // the cups turn a third of a turn per loop, so the loop is seamless
+  const spin = animT() * 120;
+  const cups = [20, 140, 260].map(a => {
+    const r = (a + spin) * Math.PI / 180, end = [MX + 19 * Math.cos(r), MY + 19 * Math.sin(r), HZ + 1.5];
     const tng = [-Math.sin(r), Math.cos(r), 0];
-    an += rod([MX, MY, HZ + 1.5], end, .6, POLEM, toneI, .8);
-    an += rod([end[0] - tng[0] * 2, end[1] - tng[1] * 2, end[2]], [end[0] + tng[0] * 3, end[1] + tng[1] * 3, end[2]], .9, PALS.mustard, toneI, 1.3, 4.6, 18);
-  }
-  parts.push({ box: [[MX - 20, MY - 20, MAST_H], [MX + 20, MY + 20, HZ + 6]], svg: an });
+    return { box: [[Math.min(MX, end[0]) - 6, Math.min(MY, end[1]) - 6, HZ - 4], [Math.max(MX, end[0]) + 6, Math.max(MY, end[1]) + 6, HZ + 7]],
+      svg: rod([MX, MY, HZ + 1.5], end, .6, POLEM, toneI, .8)
+        + rod([end[0] - tng[0] * 2.4, end[1] - tng[1] * 2.4, end[2]], [end[0] + tng[0] * 3.6, end[1] + tng[1] * 3.6, end[2]], 1, PALS.mustard, toneI, 1.3, 5.4, 18) };
+  });
+  parts.push({ box: [[MX - 3, MY - 3, MAST_H], [MX + 3, MY + 3, HZ + 3]], svg: an });
+  parts.push(...cups);
+  // a small solar panel on an arm off the mast, tilted toward the sun, charging the station's battery
+  const tilt = 35 * Math.PI / 180, pw = 16, ph = 11, PC = [MX - 9, MY, 87];
+  const pn = [Math.sin(tilt), 0, Math.cos(tilt)], pv = [-Math.cos(tilt), 0, Math.sin(tilt)];
+  const pq = (off) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [0, 1, 2].map(j => PC[j] + [0, 1, 0][j] * u * pw / 2 + pv[j] * v * ph / 2 + pn[j] * off));
+  const PA = pq(-.9), PB = pq(0);
+  const lerp = (p, q, k) => [0, 1, 2].map(j => p[j] + (q[j] - p[j]) * k);
+  let pan = rod([MX - 1.8, MY, PC[2] - 1], [PC[0] - 1, MY, PC[2] - 1], .7, POLEM, toneI, .8);
+  pan += loft(PA, PB, n => toneI(n, POLEM));
+  if (vis(pn)) {
+    pan += shape(PB, '#3d62a6', 1.1);
+    let g = '';
+    for (const k of [1 / 3, 2 / 3]) g += pd([lerp(PB[0], PB[1], k), lerp(PB[3], PB[2], k)], false);
+    g += pd([lerp(PB[0], PB[3], .5), lerp(PB[1], PB[2], .5)], false);
+    pan += `<path d="${g}" fill="none" stroke="#c9d6ee" stroke-width=".7" opacity=".75"/>`;
+  } else pan += shape(PA, POLEM.d, 1.1);
+  pan += hullInk([...PA, ...PB], 1.4);
+  parts.push({ box: [[PC[0] - 6, MY - pw / 2, PC[2] - 4], [MX - 2, MY + pw / 2, PC[2] + 4]], svg: pan });
   return s + byDepth(parts);
 }
 
 const ui = mountFigure({ fig: '08', title: 'Weather station', size: [86, 64, MAST_H + 8], center: [52, 50], palette: 'mint', state: {}, scene });
+animPlay(ui);
 </script>
 <script src="still.js"></script>
 </body></html>

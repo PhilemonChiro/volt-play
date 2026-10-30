@@ -9,9 +9,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500&family=Chivo:wght@400;500;600&family=Michroma&display=swap" rel="stylesheet" />
+    <!-- Until main.ts has set up the screen the address asks for, only a quiet boot mark shows. -->
+    <style>
+      html.booting { background: #f3f5f4; }
+      @media (prefers-color-scheme: dark) { html.booting { background: #0b1823; } }
+      html.booting body > :not(.boot) { visibility: hidden; }
+      .boot { display: none; }
+      html.booting .boot { display: grid; position: fixed; inset: 0; place-items: center; }
+      .boot img { width: 30px; height: 30px; opacity: 0; animation: boot-in 300ms ease 250ms forwards, boot-breathe 1400ms ease-in-out 550ms infinite; }
+      @keyframes boot-in { to { opacity: 1; } }
+      @keyframes boot-breathe { 50% { opacity: .35; } }
+      @media (prefers-reduced-motion: reduce) { .boot img { animation: boot-in 1ms 250ms forwards; } }
+    </style>
+    <script>document.documentElement.classList.add('booting');</script>
+    <!-- In the head, not imported from main.ts, so the page never shows unstyled while the script loads. -->
+    <link rel="stylesheet" href="/src/style.css" />
     <link rel="preload" href="/volt.wasm" as="fetch" type="application/wasm" crossorigin />
   </head>
   <body>
+    <div class="boot" aria-hidden="true"><img src="/favicon.svg" alt="" /></div>
     <header class="top">
       <a class="mark" href="https://voltembedded.com" title="voltembedded.com">
         <img src="/volt-logo.svg" alt="" width="20" height="17" /><span>Volt</span>
