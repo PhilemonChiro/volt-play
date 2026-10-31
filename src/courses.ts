@@ -193,9 +193,15 @@ const time: Lesson[] = [
 const door = (extra = '', alarmLink = '') => `hardware {
     pin relay: Output = 4
     pin button: PullUpInput = 27
+    pin wrong: PullUpInput = 19
 }
 
 var failures: int = 0
+
+// each press of the wrong-code button counts as a failed try
+on wrong.is_pressed() debounce 50ms {
+    failures += 1
+}
 
 machine door {
     initial state locked {
@@ -218,9 +224,15 @@ const alarmState = `
 const guarded = `hardware {
     pin relay: Output = 4
     pin button: PullUpInput = 27
+    pin wrong: PullUpInput = 19
 }
 
 var failures: int = 0
+
+// each press of the wrong-code button counts as a failed try
+on wrong.is_pressed() debounce 50ms {
+    failures += 1
+}
 
 machine door {
     initial state locked {
