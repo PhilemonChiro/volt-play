@@ -13,5 +13,5 @@ The build expects the compiler at ../compiler and device descriptors at
 
 ## License
 
-[GNU AGPL v3](LICENSE). A commercial licence is available: contact pchiro29@gmail.com. Contributions are made under the
+[GNU AGPL v3](LICENSE). A commercial licence is available: contact licensing@voltembedded.com. Contributions are made under the
 [Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).

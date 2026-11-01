@@ -1,7 +1,7 @@
 /* ============================================================
    Colorfigures core: projection, shapes, shading, ink, labels, page shell.
    A figure page includes this file (scripts/build.py inlines it), then calls mountFigure({...}).
-   See SKILL.md for the drawing contract and conventions.
+   Each figure page follows the same drawing conventions as the existing pages in art/.
    One fixed view (front-left-top) and one fixed light (from above, behind the viewer's right shoulder: the front is lit,
    the left side is in shade, and cast shadows fall toward the lower left of the screen).
    ============================================================ */
